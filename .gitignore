@@ -1,20 +1,36 @@
 # Dependencies
 node_modules/
 
-# Build
+# Build output (GitHub Actions üretir)
 dist/
 
-# Environment (asla commit etmeyin)
+# Secrets — asla commit etmeyin
 .env
 .env.*
 !.env.example
 
-# OS / editor
+# macOS
 .DS_Store
+**/.DS_Store
+
+# Windows
 Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Editor / IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Cursor
+.cursor/
 
 # Vite
 *.local
+
+# OS junk folders
+adsız klasör/
