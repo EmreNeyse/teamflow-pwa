@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeamFlow</title>
+<meta name="theme-color" content="#121820">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TeamFlow">
+<link rel="manifest" href="/manifest.json">
+</head>
+<body class="dark">
+<div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+<div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+<div class="bg-orb bg-orb-3" aria-hidden="true"></div>
+
+<!-- SETUP -->
+<div id="setupScreen" class="screen active">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><defs><linearGradient id="logoGrad" x1="0" y1="0" x2="36" y2="36"><stop stop-color="#f97316"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><circle cx="18" cy="18" r="18" fill="url(#logoGrad)"/><path d="M10 18h16M18 10v16" stroke="white" stroke-width="2.5" stroke-linecap="round"/><circle cx="18" cy="18" r="5" fill="white" opacity=".3"/></svg>
+      <span id="setupTitle">TeamFlow</span>
+    </div>
+    <div class="slabel">Avatarını Seç</div>
+    <div class="av-grid" id="avGrid"></div>
+    <div class="slabel">Profil</div>
+    <div class="two-col" style="margin-bottom:.75rem">
+      <div class="fg" style="margin:0"><label class="form-label">Ad</label><input class="form-input" id="sName" placeholder="Adın"></div>
+      <div class="fg" style="margin:0"><label class="form-label">Soyad</label><input class="form-input" id="sSurname" placeholder="Soyadın"></div>
+    </div>
+    <div class="fg"><label class="form-label">4 Haneli PIN</label><input class="form-input" id="sPin" placeholder="••••" type="password" maxlength="4" inputmode="numeric"></div>
+    <div class="slabel">AI Bağlantısı <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;font-weight:400">(opsiyonel)</span></div>
+    <div class="fg"><label class="form-label">Groq API Key</label><input class="form-input" id="sGroq" placeholder="gsk_..." type="password" autocomplete="off"><div style="font-size:11px;color:var(--text3);margin-top:6px">AI Group Head için Groq anahtarını buraya girebilirsin. Boş bırakırsan demo mod çalışır.</div></div>
+    <button class="btn-primary" onclick="finishSetup()">Başla →</button>
+    <div class="setup-cloud-panel" id="cloudSetupPanel">
+      <p class="setup-sync-note">Başka cihazda bulut hesabın varsa buradan devam et.</p>
+      <div class="fg" style="margin-bottom:.5rem">
+        <label class="form-label" for="cloudSetupEmail">Bulut E-posta</label>
+        <input class="form-input" id="cloudSetupEmail" type="email" autocomplete="username" placeholder="ornek@mail.com">
+      </div>
+      <div class="fg" style="margin-bottom:.75rem">
+        <label class="form-label" for="cloudSetupPassword">Bulut Şifresi</label>
+        <input class="form-input" id="cloudSetupPassword" type="password" autocomplete="current-password" placeholder="Bulut şifren">
+      </div>
+      <button class="btn btn-teal setup-import-btn" type="button" onclick="signInFromCloudOnSetup()">Bulut Hesabından Devam Et</button>
+    </div>
+    <p class="setup-sync-note">Bulut kullanmıyorsan manuel yedek de alabilirsin.</p>
+    <button class="btn btn-outline setup-import-btn" type="button" onclick="triggerImportBackup()">Yedek İçe Aktar</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="screen">
+  <div class="login-scene">
+    <div class="login-mesh" aria-hidden="true"></div>
+
+    <aside class="login-brand">
+      <div class="login-brand-glow" aria-hidden="true"></div>
+      <div class="login-brand-inner">
+        <div class="login-logo">
+          <div class="login-logo-mark">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="logoGrad2" x1="0" y1="0" x2="44" y2="44">
+                  <stop stop-color="#f97316"/><stop offset="1" stop-color="#14b8a6"/>
+                </linearGradient>
+              </defs>
+              <rect width="44" height="44" rx="14" fill="url(#logoGrad2)"/>
+              <path d="M12 22h20M22 12v20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="22" cy="22" r="6" fill="white" opacity=".22"/>
+            </svg>
+          </div>
+          <div>
+            <span class="login-brand-name">TeamFlow</span>
+            <div class="login-tagline">Kişisel görev takip asistanın</div>
+          </div>
+        </div>
+
+        <p class="login-brand-lead">Haftalık hedeflerini planla, panonda gerçek zamanlı takip et, AI destekli raporlarla odaklan.</p>
+
+        <div class="login-showcase" aria-hidden="true">
+          <div class="login-showcase-head">
+            <span class="login-showcase-label"><span class="pulse"></span>Canlı Pano</span>
+            <span class="login-showcase-week">Bu Hafta</span>
+          </div>
+          <div class="kanban" id="loginShowcaseKanban"></div>
+        </div>
+
+        <div class="showcase-stats" id="loginShowcaseStats"></div>
+
+        <div class="login-brand-badge">
+          <span class="login-badge-dot" aria-hidden="true"></span>
+          Offline-first PWA · Çoklu profil
+        </div>
+      </div>
+    </aside>
+
+    <main class="login-auth">
+      <div class="login-card">
+        <header class="login-card-head">
+          <p class="login-eyebrow">Giriş</p>
+          <h2 class="login-card-title">Tekrar hoş geldin</h2>
+          <p class="login-card-sub">Hesabını seç ve PIN ile devam et. Bulut senkronu etkinse cihazlar otomatik eşitlenir.</p>
+        </header>
+
+        <section class="login-section">
+          <div class="login-section-label">Hesaplar</div>
+          <div class="user-picker" id="userPicker"></div>
+          <div class="login-actions">
+            <button class="login-new-btn" type="button" onclick="startNewAccount()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Yeni hesap oluştur
+            </button>
+          </div>
+        </section>
+
+        <section class="login-section hidden" id="cloudLoginPanel">
+          <div class="login-section-label">Bulut Hesabı</div>
+          <div class="fg" style="margin-bottom:.5rem">
+            <label class="form-label" for="cloudLoginEmail">Bulut E-posta</label>
+            <input class="form-input" id="cloudLoginEmail" type="email" autocomplete="username" placeholder="ornek@mail.com">
+          </div>
+          <div class="fg" style="margin-bottom:.75rem">
+            <label class="form-label" for="cloudLoginPassword">Bulut Şifresi</label>
+            <input class="form-input" id="cloudLoginPassword" type="password" autocomplete="current-password" placeholder="Bulut şifren">
+          </div>
+          <button class="login-new-btn" type="button" onclick="signInFromCloudOnLogin()">Bulut Hesabından Giriş Yap</button>
+        </section>
+
+        <section class="pin-box hidden" id="loginCard">
+          <div class="pin-identity">
+            <div class="login-profile-ring">
+              <div class="pf-av" id="loginAv">🦸</div>
+              <div class="login-profile-verified" aria-hidden="true">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+            <div class="pin-identity-meta">
+              <div class="pf-name" id="loginName">—</div>
+              <div class="pf-email" id="loginEmail">—</div>
+            </div>
+            <div class="pin-entry" id="pinEntry">
+              <div class="pin-dots" aria-hidden="true">
+                <div class="pin-dot" id="pd0"></div>
+                <div class="pin-dot" id="pd1"></div>
+                <div class="pin-dot" id="pd2"></div>
+                <div class="pin-dot" id="pd3"></div>
+              </div>
+              <input
+                class="pin-input"
+                id="pinInput"
+                type="password"
+                maxlength="4"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="one-time-code"
+                aria-label="4 haneli PIN"
+                placeholder="••••"
+              >
+            </div>
+          </div>
+
+          <div class="pin-foot">
+            <div class="pin-error" id="pinErr"></div>
+            <button class="pin-forgot" type="button" onclick="openForgotPin()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.75"/><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              PIN'imi unuttum
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="login-footer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.75"/></svg>
+        Oturum verileri yalnızca bu cihazda saklanır
+      </footer>
+    </main>
+  </div>
+</div>
+
+<div id="resetPinScreen" class="screen">
+  <div class="login-scene login-scene--reset">
+    <button class="reset-pin-back" type="button" onclick="cancelForgotPin()">← Geri Dön</button>
+    <main class="login-auth login-auth--solo">
+      <div class="login-card login-card--reset">
+        <header class="login-card-head login-card-head--center">
+          <p class="login-eyebrow">PIN Sıfırlama</p>
+          <h2 class="login-card-title">Yeni PIN oluştur</h2>
+          <p class="login-card-sub">Kayıtlı hesabın için yeni bir 4 haneli PIN belirle</p>
+        </header>
+
+        <section class="pin-box pin-box--reset">
+          <div class="pin-identity">
+            <div class="login-profile-ring">
+              <div class="pf-av" id="resetPinAv">🦸</div>
+              <div class="login-profile-verified" aria-hidden="true">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+            <div class="pin-identity-meta">
+              <div class="pf-name" id="resetPinName">—</div>
+              <div class="pf-email" id="resetPinEmail">—</div>
+            </div>
+          </div>
+
+          <div class="reset-pin-fields">
+            <div class="reset-pin-group">
+              <label class="reset-pin-label" for="resetPin1">Yeni PIN</label>
+              <div class="pin-entry" id="resetPinEntry1">
+                <div class="pin-dots" aria-hidden="true">
+                  <div class="pin-dot" id="rpd10"></div>
+                  <div class="pin-dot" id="rpd11"></div>
+                  <div class="pin-dot" id="rpd12"></div>
+                  <div class="pin-dot" id="rpd13"></div>
+                </div>
+                <input
+                  class="pin-input"
+                  id="resetPin1"
+                  type="password"
+                  maxlength="4"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="new-password"
+                  aria-label="Yeni 4 haneli PIN"
+                  placeholder="••••"
+                >
+              </div>
+            </div>
+
+            <div class="reset-pin-group">
+              <label class="reset-pin-label" for="resetPin2">Yeni PIN'i tekrar girin</label>
+              <div class="pin-entry" id="resetPinEntry2">
+                <div class="pin-dots" aria-hidden="true">
+                  <div class="pin-dot" id="rpd20"></div>
+                  <div class="pin-dot" id="rpd21"></div>
+                  <div class="pin-dot" id="rpd22"></div>
+                  <div class="pin-dot" id="rpd23"></div>
+                </div>
+                <input
+                  class="pin-input"
+                  id="resetPin2"
+                  type="password"
+                  maxlength="4"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  autocomplete="new-password"
+                  aria-label="Yeni PIN tekrar"
+                  placeholder="••••"
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="pin-error" id="resetPinErr"></div>
+
+          <div class="reset-pin-actions">
+            <button class="btn btn-teal reset-pin-save" type="button" onclick="saveForgotPin()">Kaydet</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen" class="screen">
+  <nav class="app-nav">
+    <div class="nav-bar-top">
+      <div class="nav-logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><defs><linearGradient id="logoGrad3" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#f97316"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><circle cx="14" cy="14" r="14" fill="url(#logoGrad3)"/><path d="M7 14h14M14 7v14" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>TeamFlow</span>
+      </div>
+      <div class="nav-right">
+        <div class="notif-wrap" id="notifWrap">
+          <button class="notif-trigger" onclick="toggleNotifMenu()" id="notifTrigger" aria-label="Bildirimler">
+            🔔
+            <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+          </button>
+        </div>
+        <div class="profile-menu-wrap" id="profileMenuWrap">
+          <button class="profile-trigger" onclick="toggleProfileMenu()" id="profileTrigger">
+            <span class="nav-av" id="navAv">🦸</span>
+            <span class="nav-nm" id="navNm">—</span>
+            <span class="profile-caret" id="profileCaret">▾</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-links nav-links--desktop" role="tablist" aria-label="Ana menü">
+      <button type="button" class="nav-tab active" id="tab-tasks" data-nav-tab="tasks" role="tab" onclick="switchTab('tasks')">📋 Tasklar</button>
+      <button type="button" class="nav-tab" id="tab-ai" data-nav-tab="ai" role="tab" onclick="switchTab('ai')">🤖 AI Head</button>
+      <button type="button" class="nav-tab" id="tab-reports" data-nav-tab="reports" role="tab" onclick="switchTab('reports')">📊 Raporlar</button>
+    </div>
+  </nav>
+
+  <div class="notif-dropdown" id="notifDropdown">
+    <div class="notif-dropdown-header">
+      <span class="notif-dropdown-title">🔔 Bildirimler</span>
+      <button class="notif-mark-all" onclick="markAllRead()">Tümünü okundu işaretle</button>
+    </div>
+    <div class="notif-empty" id="notifEmpty">Henüz bildirim yok</div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+
+  <div class="profile-dropdown" id="profileDropdown">
+    <div class="profile-dropdown-header">
+      <span class="pd-av" id="pdAv">🦸</span>
+      <div>
+        <div class="pd-name" id="pdName">—</div>
+        <div class="pd-email" id="pdEmail">—</div>
+      </div>
+    </div>
+    <div class="pd-divider"></div>
+    <button class="pd-item" onclick="profileAction('settings')">⚙️ Ayarlar</button>
+    <button class="pd-item" onclick="profileAction('dark')">
+      <span id="pdDarkIcon">🌙</span> <span id="pdDarkLabel">Koyu Tema</span>
+    </button>
+    <div class="pd-divider"></div>
+    <button class="pd-item pd-logout" onclick="profileAction('logout')">↩ Çıkış Yap</button>
+  </div>
+
+  <div class="rpt-download-menu" id="rptDownloadMenu" role="menu" aria-label="Rapor indirme formatı">
+    <button type="button" class="rpt-download-item" role="menuitem" onclick="downloadReport('excel')">Excel (.xlsx)</button>
+    <button type="button" class="rpt-download-item" role="menuitem" onclick="downloadReport('pdf')">PDF (.pdf)</button>
+  </div>
+
+  <div class="app-body">
+
+    <!-- TASKS -->
+    <div id="tc-tasks" class="tab-content active">
+      <div class="page-header">
+        <div><div class="page-title">📋 Görev Tahtam</div><div class="page-sub" id="boardSub">—</div></div>
+        <button class="btn btn-teal" onclick="openNewTask()">＋ Yeni Görev</button>
+      </div>
+      <div class="board-ctrl">
+        <button class="fpill active" onclick="setF('all',this)">Tümü</button>
+        <button class="fpill" onclick="setF('high',this)">🔴 Yüksek</button>
+        <button class="fpill" onclick="setF('medium',this)">🟡 Orta</button>
+        <button class="fpill" onclick="setF('low',this)">🟢 Düşük</button>
+        <div class="week-nav">
+          <button class="warr" onclick="chWeek(-1)">‹</button>
+          <span class="week-lbl" id="weekLbl">Bu Hafta</span>
+          <button class="warr" onclick="chWeek(1)">›</button>
+        </div>
+      </div>
+      <div class="kanban">
+        <div class="k-col" id="kcol-todo" data-col="todo" ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,this)">
+          <div class="k-head"><div class="k-title"><div class="k-dot todo"></div><span class="k-name">Yapılacak</span></div><span class="k-cnt" id="cnt-todo">0</span></div>
+          <div class="k-tasks" id="col-todo"></div>
+        </div>
+        <div class="k-col" id="kcol-inprogress" data-col="inprogress" ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,this)">
+          <div class="k-head"><div class="k-title"><div class="k-dot inp"></div><span class="k-name">Devam Ediyor</span></div><span class="k-cnt" id="cnt-inprogress">0</span></div>
+          <div class="k-tasks" id="col-inprogress"></div>
+        </div>
+        <div class="k-col" id="kcol-done" data-col="done" ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,this)">
+          <div class="k-head"><div class="k-title"><div class="k-dot done"></div><span class="k-name">Tamamlandı</span></div><span class="k-cnt" id="cnt-done">0</span></div>
+          <div class="k-tasks" id="col-done"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div id="tc-ai" class="tab-content">
+      <div class="page-header"><div><div class="page-title">🤖 AI Group Head</div><div class="page-sub">Akıllı görev asistanın</div></div></div>
+      <div class="ai-layout">
+        <div class="ai-sidebar">
+          <div class="ai-card">
+            <div class="ai-hero">
+              <div class="ai-orb">🤖</div>
+              <div class="ai-hero-meta">
+                <div class="ai-name">AI Group Head</div>
+                <div class="ai-sub">Görev koordinatörün</div>
+              </div>
+              <div class="ai-online"><span class="pulse"></span>Aktif</div>
+            </div>
+            <div class="ai-btns">
+              <button class="ai-btn" onclick="aiTrig('plan')"><span class="ai-btn-icon">📥</span><div><div class="ai-btn-lbl">Haftalık Plan Al</div><div class="ai-btn-sub">Pazartesi rutini</div></div></button>
+              <button class="ai-btn" onclick="aiTrig('checkin')"><span class="ai-btn-icon">📊</span><div><div class="ai-btn-lbl">Çarşamba Takibi</div><div class="ai-btn-sub">İlerleme kontrolü</div></div></button>
+              <button class="ai-btn" onclick="aiTrig('report')"><span class="ai-btn-icon">📋</span><div><div class="ai-btn-lbl">Haftalık Rapor</div><div class="ai-btn-sub">Cuma 16:30</div></div></button>
+              <button class="ai-btn" onclick="aiTrig('focus')"><span class="ai-btn-icon">🎯</span><div><div class="ai-btn-lbl">Bugün Ne Yapmalıyım?</div><div class="ai-btn-sub">Öncelik analizi</div></div></button>
+            </div>
+          </div>
+        </div>
+        <div class="chat-wrap">
+          <div class="chat-head">
+            <span style="font-size:22px">🤖</span>
+            <div><div class="chat-head-name">AI Group Head</div><div class="chat-head-sub">Türkçe · Görev tabanlı AI asistan</div></div>
+          </div>
+          <div class="chat-msgs" id="chatMsgs">
+            <div class="chat-msg ai">
+              <div class="msg-av">🤖</div>
+              <div><div class="msg-bubble">Merhaba! Ben senin AI Group Head'in. Görevlerini takip etmene, önceliklendirmene ve haftalık raporlarını hazırlamana yardımcı olmak için buradayım. Ne yapmak istersin? 🚀</div><div class="msg-time">Şimdi</div></div>
+            </div>
+          </div>
+          <div class="chat-compose-dock">
+            <div class="chat-foot">
+              <div class="chat-inp-wrap">
+                <input class="chat-inp" id="chatInp" placeholder="Mesajını yaz..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}">
+                <div class="chat-suggest-fab-wrap">
+                  <div class="chat-suggest-menu" id="chatSuggestMenu" role="menu" aria-label="Hızlı öneriler" aria-hidden="true">
+                    <svg class="chat-suggest-menu-curve" viewBox="0 0 112 168" preserveAspectRatio="none" aria-hidden="true">
+                      <path d="M 70 160 Q 112 84 106 8" fill="none"/>
+                    </svg>
+                    <button type="button" class="chat-suggest-menu-item" role="menuitem" style="--cx:106;--cy:8" onclick="aiTrig('plan')">
+                      <span class="chat-suggest-menu-label">Haftalık Plan Al</span>
+                      <span class="chat-suggest-menu-dot" aria-hidden="true">•</span>
+                    </button>
+                    <button type="button" class="chat-suggest-menu-item" role="menuitem" style="--cx:104.67;--cy:58.67" onclick="aiTrig('checkin')">
+                      <span class="chat-suggest-menu-label">Çarşamba Takibi</span>
+                      <span class="chat-suggest-menu-dot" aria-hidden="true">•</span>
+                    </button>
+                    <button type="button" class="chat-suggest-menu-item" role="menuitem" style="--cx:92.67;--cy:109.33" onclick="aiTrig('report')">
+                      <span class="chat-suggest-menu-label">Haftalık Rapor</span>
+                      <span class="chat-suggest-menu-dot" aria-hidden="true">•</span>
+                    </button>
+                    <button type="button" class="chat-suggest-menu-item" role="menuitem" style="--cx:70;--cy:160" onclick="aiTrig('focus')">
+                      <span class="chat-suggest-menu-label">Bugün Ne Yapmalıyım?</span>
+                      <span class="chat-suggest-menu-dot" aria-hidden="true">•</span>
+                    </button>
+                  </div>
+                  <button type="button" class="chat-suggest-fab" id="chatSuggestFab" onclick="toggleChatSuggestions(event)" aria-label="Öneriler" aria-expanded="false" aria-controls="chatSuggestMenu">
+                    <span class="material-symbols-outlined chat-suggest-fab-icon" aria-hidden="true">check</span>
+                  </button>
+                </div>
+              </div>
+              <button class="chat-send" onclick="sendMsg()" aria-label="Gönder">
+                <span class="material-symbols-outlined chat-send-icon" aria-hidden="true">send</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="tc-reports" class="tab-content">
+      <div class="page-header">
+        <div><div class="page-title">📊 Raporlarım</div><div class="page-sub">Canlı performans dashboard · grafikler ve haftalık özet</div></div>
+        <button class="btn btn-teal" onclick="buildReport()">＋ Rapor Oluştur</button>
+      </div>
+      <div id="rptList"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tc-settings" class="tab-content">
+      <div class="page-header">
+        <div>
+          <div class="page-title">⚙️ Ayarlar</div>
+          <div class="page-sub">Profil yönetimi</div>
+        </div>
+        <div class="settings-header-actions">
+          <button class="btn btn-teal" type="button" onclick="goSetup()">Profili Düzenle</button>
+          <button class="btn btn-outline" type="button" onclick="deleteAccount()">Hesabı Sil</button>
+          <button class="btn btn-outline" type="button" onclick="hardReset()">Verileri Sıfırla</button>
+        </div>
+      </div>
+      <div class="s-card"><div class="s-head">👤 Profilim</div><div class="s-body" id="sProfile"></div></div>
+      <div class="s-card">
+        <div class="s-head">🤖 AI Bağlantısı</div>
+        <div class="s-body">
+          <div class="s-row"><span class="s-key">Groq API</span><span class="s-val" id="s-grq">—</span></div>
+          <div class="fg" style="margin-top:.75rem;margin-bottom:0">
+            <label class="form-label" for="setGroq">Groq API Key</label>
+            <div class="input-secret-wrap">
+              <input class="form-input" id="setGroq" placeholder="gsk_..." type="password" autocomplete="off">
+              <button type="button" class="secret-toggle" onclick="toggleSecret('setGroq', this)" aria-label="Groq API Key göster">
+                <svg class="secret-icon secret-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
+                <svg class="secret-icon secret-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.5 10.677a3 3 0 004.243 4.243M9.27 9.27 5.36 5.36A10.8 10.8 0 0112 5c6.5 0 10 7 10 7a18.2 18.2 0 01-4.58 5.32M6.53 6.53C3.62 8.56 2 12 2 12s3.5 7 10 7c1.05 0 2.05-.15 2.98-.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:6px">Opsiyonel. AI Group Head yanıtları için kullanılır.</div>
+          </div>
+        </div>
+        <div class="s-card-foot">
+          <button class="btn btn-teal" type="button" onclick="saveGroqKey()">Groq Key Kaydet</button>
+        </div>
+      </div>
+      <div class="s-card">
+        <div class="s-head">🔒 Güvenlik</div>
+        <div class="s-body">
+          <div class="s-row s-row--secret">
+            <span class="s-key">Giriş PIN'i</span>
+            <div class="input-secret-wrap input-secret-wrap--compact">
+              <input class="form-input form-input--compact" id="settingsPinView" type="password" readonly tabindex="-1" aria-label="Giriş PIN'i">
+              <button type="button" class="secret-toggle" onclick="toggleSecret('settingsPinView', this)" aria-label="PIN göster">
+                <svg class="secret-icon secret-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
+                <svg class="secret-icon secret-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.5 10.677a3 3 0 004.243 4.243M9.27 9.27 5.36 5.36A10.8 10.8 0 0112 5c6.5 0 10 7 10 7a18.2 18.2 0 01-4.58 5.32M6.53 6.53C3.62 8.56 2 12 2 12s3.5 7 10 7c1.05 0 2.05-.15 2.98-.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="s-card-foot">
+          <button class="btn btn-teal" type="button" onclick="openModal('pinModal')">🔑 PIN Değiştir</button>
+        </div>
+      </div>
+      <div class="s-card">
+        <div class="s-head">☁️ Bulut Senkronu</div>
+        <div class="s-body">
+          <div class="s-row"><span class="s-key">Durum</span><span class="s-val" id="cloudSyncStatus">—</span></div>
+          <div id="cloudSyncMeta" style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:8px">—</div>
+          <div class="fg" style="margin-top:12px;margin-bottom:0">
+            <label class="form-label" for="cloudSettingsEmail">Bulut E-posta</label>
+            <input class="form-input" id="cloudSettingsEmail" type="email" autocomplete="username" placeholder="ornek@mail.com">
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <label class="form-label" for="cloudSettingsPassword">Bulut Şifresi</label>
+            <input class="form-input" id="cloudSettingsPassword" type="password" autocomplete="new-password" placeholder="En az 6 karakter">
+            <div style="font-size:11px;color:var(--text3);margin-top:6px">PIN'den ayrıdır. Cihazlar arası otomatik senkron için kullanılır.</div>
+          </div>
+        </div>
+        <div class="s-card-foot" id="cloudSyncActions"></div>
+      </div>
+      <div class="s-card">
+        <div class="s-head">💾 Manuel Yedek</div>
+        <div class="s-body">
+          <div class="s-row" style="align-items:flex-start">
+            <span class="s-key">Yerel yedek</span>
+            <span class="s-val" style="max-width:220px;line-height:1.5">Bulut senkronu yoksa veya ek güvenlik için JSON yedek dosyası kullanabilirsin.</span>
+          </div>
+        </div>
+        <div class="s-card-foot">
+          <button class="btn btn-teal" type="button" onclick="exportAccountBackup()">Yedek İndir</button>
+          <button class="btn btn-outline" type="button" onclick="triggerImportBackup()">Yedek İçe Aktar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="app-bottom-nav" aria-label="Mobil ana menü" role="tablist">
+    <button type="button" class="bottom-nav-tab active" data-nav-tab="tasks" role="tab" onclick="switchTab('tasks')">
+      <span class="bottom-nav-icon" aria-hidden="true">📋</span>
+      <span class="bottom-nav-label">Tasklar</span>
+    </button>
+    <button type="button" class="bottom-nav-tab" data-nav-tab="ai" role="tab" onclick="switchTab('ai')">
+      <span class="bottom-nav-icon" aria-hidden="true">🤖</span>
+      <span class="bottom-nav-label">AI Head</span>
+    </button>
+    <button type="button" class="bottom-nav-tab" data-nav-tab="reports" role="tab" onclick="switchTab('reports')">
+      <span class="bottom-nav-icon" aria-hidden="true">📊</span>
+      <span class="bottom-nav-label">Raporlar</span>
+    </button>
+  </nav>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-bg" id="taskModal">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title" id="tModalTitle">Yeni Görev</span><button class="modal-x" onclick="closeModal('taskModal')">×</button></div>
+    <div class="modal-body">
+      <div class="fg"><label class="form-label">Başlık *</label><input class="form-input" id="fTitle" placeholder="Görev başlığı..."></div>
+      <div class="fg"><label class="form-label">Açıklama</label><textarea class="form-input" id="fDesc" placeholder="Detaylar, notlar..." style="min-height:75px;resize:vertical"></textarea></div>
+      <div class="two-col">
+        <div class="fg"><label class="form-label">Öncelik</label><select class="form-input" id="fPrio"><option value="high">🔴 Yüksek</option><option value="medium" selected>🟡 Orta</option><option value="low">🟢 Düşük</option></select></div>
+        <div class="fg"><label class="form-label">Durum</label><select class="form-input" id="fStatus"><option value="todo">Yapılacak</option><option value="inprogress">Devam Ediyor</option><option value="done">Tamamlandı</option></select></div>
+      </div>
+      <div class="two-col">
+        <div class="fg"><label class="form-label">Bitiş Tarihi</label><input class="form-input" id="fDue" type="date"></div>
+        <div class="fg"><label class="form-label">Etiket</label><input class="form-input" id="fTag" placeholder="tasarım, sunum..."></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('taskModal')">İptal</button>
+      <button class="btn btn-teal" onclick="saveTask()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Görev Detayı</span><button class="modal-x" onclick="closeModal('detailModal')">×</button></div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-foot" id="detailFoot"></div>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="modal-bg" id="pinModal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-head"><span class="modal-title">🔑 PIN Değiştir</span><button class="modal-x" onclick="closePinModal()">×</button></div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="form-label">Mevcut PIN</label>
+        <div class="input-secret-wrap">
+          <input class="form-input" id="pinOld" type="password" maxlength="4" inputmode="numeric" pattern="\d*" placeholder="Eski 4 haneli PIN">
+          <button type="button" class="secret-toggle" onclick="toggleSecret('pinOld', this)" aria-label="Mevcut PIN göster">
+            <svg class="secret-icon secret-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
+            <svg class="secret-icon secret-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.5 10.677a3 3 0 004.243 4.243M9.27 9.27 5.36 5.36A10.8 10.8 0 0112 5c6.5 0 10 7 10 7a18.2 18.2 0 01-4.58 5.32M6.53 6.53C3.62 8.56 2 12 2 12s3.5 7 10 7c1.05 0 2.05-.15 2.98-.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="form-label">Yeni PIN</label>
+        <div class="input-secret-wrap">
+          <input class="form-input" id="pinNew" type="password" maxlength="4" inputmode="numeric" pattern="\d*" placeholder="Yeni 4 haneli PIN">
+          <button type="button" class="secret-toggle" onclick="toggleSecret('pinNew', this)" aria-label="Yeni PIN göster">
+            <svg class="secret-icon secret-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
+            <svg class="secret-icon secret-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.5 10.677a3 3 0 004.243 4.243M9.27 9.27 5.36 5.36A10.8 10.8 0 0112 5c6.5 0 10 7 10 7a18.2 18.2 0 01-4.58 5.32M6.53 6.53C3.62 8.56 2 12 2 12s3.5 7 10 7c1.05 0 2.05-.15 2.98-.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="form-label">Yeni PIN Tekrar</label>
+        <div class="input-secret-wrap">
+          <input class="form-input" id="pinNew2" type="password" maxlength="4" inputmode="numeric" pattern="\d*" placeholder="Yeni PIN'i tekrar gir">
+          <button type="button" class="secret-toggle" onclick="toggleSecret('pinNew2', this)" aria-label="Yeni PIN tekrar göster">
+            <svg class="secret-icon secret-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
+            <svg class="secret-icon secret-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.5 10.677a3 3 0 004.243 4.243M9.27 9.27 5.36 5.36A10.8 10.8 0 0112 5c6.5 0 10 7 10 7a18.2 18.2 0 01-4.58 5.32M6.53 6.53C3.62 8.56 2 12 2 12s3.5 7 10 7c1.05 0 2.05-.15 2.98-.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="pinModalErr" style="color:var(--red);font-size:12px;min-height:18px;margin-top:-4px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closePinModal()">İptal</button>
+      <button class="btn btn-teal" onclick="changePin()">Değiştir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="/src/main.ts"></script>
+<input type="file" id="backupImportInput" accept="application/json,.json" hidden onchange="handleImportBackupFile(event)">
+</body>
+</html>
