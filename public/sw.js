@@ -1,5 +1,5 @@
-const CACHE = 'teamflow-v4';
-const SHELL = ['./', './index.html'];
+const CACHE = 'teamflow-v5';
+const SHELL = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

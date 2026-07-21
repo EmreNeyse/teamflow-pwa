@@ -1,7 +1,9 @@
 import '@/styles/globals.css';
 import { boot, registerWindowApi } from '@/app/boot';
+import { initPwaInstall } from '@/lib/pwa/install';
 
 registerWindowApi();
+initPwaInstall();
 boot();
 
 if ('serviceWorker' in navigator) {
@@ -19,7 +21,7 @@ if ('serviceWorker' in navigator) {
       }
 
       await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
-      console.log('SW registered (teamflow-v4, network-first assets)');
+      console.log('SW registered (teamflow-v5, network-first assets)');
     } catch (error) {
       console.log('SW error', error);
     }

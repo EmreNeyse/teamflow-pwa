@@ -1,6 +1,5 @@
 import type { Task, TaskPriority, TaskStatus } from '@/types';
 import { esc } from '@/lib/utils';
-import { ensureSampleTasks, tasksChanged } from '@/data/sample-tasks';
 import { weekKey, weekLabel, todayIso, normalizeWeekOffset } from '@/lib/tasks/week';
 import { getState, patchState } from '@/app/state';
 import { toast } from '@/app/toast';
@@ -19,16 +18,16 @@ export function renderTasks(): void {
   const state = getState();
   const wkOff = normalizeWeekOffset(state.wkOff);
   const week = weekKey(wkOff);
-  const syncedTasks = ensureSampleTasks(state.tasks, week);
+  const allTasks = state.tasks ?? [];
 
-  if (tasksChanged(state.tasks, syncedTasks) || state.wkOff !== wkOff) {
-    patchState((current) => ({ ...current, tasks: syncedTasks, wkOff }));
+  if (state.wkOff !== wkOff) {
+    patchState((current) => ({ ...current, wkOff }));
   }
 
   (document.getElementById('weekLbl') as HTMLElement).textContent = weekLabel(wkOff);
   (document.getElementById('boardSub') as HTMLElement).textContent = `Hafta: ${week}`;
 
-  let tasks = syncedTasks.filter((task) => task.wk === week);
+  let tasks = allTasks.filter((task) => task.wk === week);
   if (state.filter !== 'all') tasks = tasks.filter((task) => task.prio === state.filter);
 
   (['todo', 'inprogress', 'done'] as const).forEach((status) => {
@@ -252,7 +251,20 @@ export function editTask(id: string): void {
 
 export function deleteTask(id: string): void {
   if (!confirm('Bu görevi silmek istediğine emin misin?')) return;
-  patchState((state) => ({ ...state, tasks: state.tasks.filter((task) => task.id !== id) }));
+
+  let removed = false;
+  patchState((state) => {
+    const nextTasks = state.tasks.filter((task) => task.id !== id);
+    removed = nextTasks.length < state.tasks.length;
+    if (!removed) return state;
+    return { ...state, tasks: nextTasks };
+  });
+
+  if (!removed) {
+    toast('Görev bulunamadı', 'err');
+    return;
+  }
+
   closeModal('detailModal');
   renderTasks();
   toast('Görev silindi');

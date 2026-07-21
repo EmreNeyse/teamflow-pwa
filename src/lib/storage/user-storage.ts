@@ -7,7 +7,6 @@ import type {
   UserRegistry,
   UserSummary,
 } from '@/types';
-import { createAllDemoWeekTasks, ensureSampleReports, ensureSampleTasks } from '@/data/sample-tasks';
 import { syncDemoTasksForUser } from '@/lib/tasks/demo-sync';
 import { uid } from '@/lib/utils';
 
@@ -32,8 +31,8 @@ function emptyUserData(profile: UserProfile): UserData {
   return {
     profile,
     cfg: {},
-    tasks: createAllDemoWeekTasks(),
-    reports: ensureSampleReports([], createAllDemoWeekTasks()),
+    tasks: [],
+    reports: [],
     notifications: [],
     routineFlags: {},
     wkOff: 0,
@@ -74,7 +73,7 @@ function migrateLegacyIfNeeded(): void {
     const data: UserData = {
       profile,
       cfg: legacy.cfg ?? {},
-      tasks: ensureSampleTasks(legacy.tasks ?? []),
+      tasks: legacy.tasks ?? [],
       reports: legacy.reports ?? [],
       notifications: [],
       routineFlags: {},

@@ -1,6 +1,7 @@
 import { getSupabase } from '@/lib/sync/supabase-client';
 import { isCloudSyncAvailable } from '@/lib/sync/config';
 import { saveUserData } from '@/lib/storage/user-storage';
+import { normalizeGroqKey } from '@/lib/ai/client';
 import type { CloudSyncConfig, UserData } from '@/types';
 
 export const CLOUD_PAYLOAD_VERSION = 1 as const;
@@ -11,7 +12,7 @@ export interface CloudPayload {
   user: UserData;
 }
 
-export type CloudSyncResult = 'pushed' | 'pulled' | 'unchanged' | 'skipped' | 'error';
+export type CloudSyncResult = 'pushed' | 'pulled' | 'unchanged' | 'skipped' | 'session_expired' | 'error';
 
 let pushTimer: number | null = null;
 let pushInFlight = false;
@@ -156,12 +157,18 @@ export async function pushUserDataToCloud(data: UserData): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export function applyCloudPayload(payload: CloudPayload, sessionEmail: string): UserData {
+export function applyCloudPayload(
+  payload: CloudPayload,
+  sessionEmail: string,
+  localCfg?: UserData['cfg'],
+): UserData {
+  const remoteCfg = payload.user.cfg ?? {};
   const syncedAt = nowIso();
   const merged: UserData = {
     ...payload.user,
     cfg: {
-      ...payload.user.cfg,
+      ...remoteCfg,
+      groq: normalizeGroqKey(remoteCfg.groq) || normalizeGroqKey(localCfg?.groq) || undefined,
       cloud: {
         enabled: true,
         email: sessionEmail,
@@ -194,7 +201,7 @@ export async function syncUserDataWithCloud(localData: UserData): Promise<CloudS
   if (!supabase) return 'skipped';
 
   const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session) return 'skipped';
+  if (!sessionData.session) return 'session_expired';
 
   try {
     const remote = await fetchCloudPayload();
@@ -207,7 +214,11 @@ export async function syncUserDataWithCloud(localData: UserData): Promise<CloudS
 
     const remoteUpdatedAt = remote.payload.localUpdatedAt || remote.updatedAt;
     if (remoteUpdatedAt > localUpdatedAt) {
-      applyCloudPayload(remote.payload, sessionData.session.user.email ?? cloud.email);
+      applyCloudPayload(
+        remote.payload,
+        sessionData.session.user.email ?? cloud.email,
+        localData.cfg,
+      );
       return 'pulled';
     }
 
@@ -228,16 +239,17 @@ export function scheduleCloudPush(data: UserData): void {
 
   if (pushTimer) window.clearTimeout(pushTimer);
   pushTimer = window.setTimeout(() => {
-    void flushCloudPush(data);
+    void flushCloudPush();
   }, 1800);
 }
 
-async function flushCloudPush(data: UserData): Promise<void> {
+async function flushCloudPush(): Promise<void> {
   if (pushInFlight) return;
   pushInFlight = true;
 
   try {
-    await pushUserDataToCloud(data);
+    const { getState } = await import('@/app/state');
+    await pushUserDataToCloud(getState());
   } catch (error) {
     console.warn('Cloud push failed', error);
   } finally {

@@ -1,17 +1,12 @@
-import {
-  ensureSampleReports,
-  ensureSampleTasks,
-  reportsChanged,
-  tasksChanged,
-} from '@/data/sample-tasks';
-import { normalizeWeekOffset, weekKey } from '@/lib/tasks/week';
+import { isSampleReportId, isSampleTaskId } from '@/data/sample-tasks';
+import { normalizeWeekOffset } from '@/lib/tasks/week';
 import { getRegistry, loadUserData, saveUserData } from '@/lib/storage/user-storage';
 import type { UserData } from '@/types';
 
 export function syncDemoTasksForUser(data: UserData): UserData {
   const wkOff = normalizeWeekOffset(data.wkOff);
-  const tasks = ensureSampleTasks(data.tasks, weekKey(wkOff));
-  const reports = ensureSampleReports(data.reports, tasks);
+  const tasks = (data.tasks ?? []).filter((task) => !isSampleTaskId(task.id));
+  const reports = (data.reports ?? []).filter((report) => !isSampleReportId(report.id));
 
   return {
     ...data,
@@ -31,12 +26,9 @@ export function migrateAllUserDemoTasks(): void {
   registry.users.forEach((user) => {
     const data = loadUserData(user.id);
     if (!data) return;
+
     const synced = syncDemoTasksForUser(data);
-    if (
-      tasksChanged(data.tasks, synced.tasks)
-      || reportsChanged(data.reports, synced.reports)
-      || data.wkOff !== synced.wkOff
-    ) {
+    if (JSON.stringify(data) !== JSON.stringify(synced)) {
       saveUserData(user.id, synced);
     }
   });

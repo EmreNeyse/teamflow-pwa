@@ -2,13 +2,20 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TeamFlow</title>
+<meta name="description" content="Akıllı görev ve proje takip uygulaması — çevrimdışı PWA">
 <meta name="theme-color" content="#121820">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TeamFlow">
-<link rel="manifest" href="/manifest.json">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
 </head>
 <body class="dark">
 <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
@@ -31,7 +38,7 @@
     </div>
     <div class="fg"><label class="form-label">4 Haneli PIN</label><input class="form-input" id="sPin" placeholder="••••" type="password" maxlength="4" inputmode="numeric"></div>
     <div class="slabel">AI Bağlantısı <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;font-weight:400">(opsiyonel)</span></div>
-    <div class="fg"><label class="form-label">Groq API Key</label><input class="form-input" id="sGroq" placeholder="gsk_..." type="password" autocomplete="off"><div style="font-size:11px;color:var(--text3);margin-top:6px">AI Group Head için Groq anahtarını buraya girebilirsin. Boş bırakırsan demo mod çalışır.</div></div>
+    <div class="fg"><label class="form-label">Groq API Key</label><input class="form-input" id="sGroq" placeholder="gsk_..." type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="verbatim"><div style="font-size:11px;color:var(--text3);margin-top:6px">AI Group Head için Groq anahtarını buraya girebilirsin. Boş bırakırsan demo mod çalışır.</div></div>
     <button class="btn-primary" onclick="finishSetup()">Başla →</button>
     <div class="setup-cloud-panel" id="cloudSetupPanel">
       <p class="setup-sync-note">Başka cihazda bulut hesabın varsa buradan devam et.</p>
@@ -46,6 +53,7 @@
       <button class="btn btn-teal setup-import-btn" type="button" onclick="signInFromCloudOnSetup()">Bulut Hesabından Devam Et</button>
     </div>
     <p class="setup-sync-note">Bulut kullanmıyorsan manuel yedek de alabilirsin.</p>
+    <div class="setup-pairing-hint hidden" id="setupPairingHint"></div>
     <button class="btn btn-outline setup-import-btn" type="button" onclick="triggerImportBackup()">Yedek İçe Aktar</button>
   </div>
 </div>
@@ -103,6 +111,9 @@
           <h2 class="login-card-title">Tekrar hoş geldin</h2>
           <p class="login-card-sub">Hesabını seç ve PIN ile devam et. Bulut senkronu etkinse cihazlar otomatik eşitlenir.</p>
         </header>
+
+        <div class="login-install-hint hidden" id="loginInstallHint"></div>
+        <div class="login-install-hint hidden" id="loginPairingHint"></div>
 
         <section class="login-section">
           <div class="login-section-label">Hesaplar</div>
@@ -333,6 +344,8 @@
         <div><div class="page-title">📋 Görev Tahtam</div><div class="page-sub" id="boardSub">—</div></div>
         <button class="btn btn-teal" onclick="openNewTask()">＋ Yeni Görev</button>
       </div>
+      <div class="pwa-install-banner hidden" id="pwaInstallBanner"></div>
+      <div class="cloud-sync-banner hidden" id="cloudSyncBanner"></div>
       <div class="board-ctrl">
         <button class="fpill active" onclick="setF('all',this)">Tümü</button>
         <button class="fpill" onclick="setF('high',this)">🔴 Yüksek</button>
@@ -457,13 +470,22 @@
       </div>
       <div class="s-card"><div class="s-head">👤 Profilim</div><div class="s-body" id="sProfile"></div></div>
       <div class="s-card">
+        <div class="s-head">📲 Uygulamayı Yükle</div>
+        <div class="s-body">
+          <div class="s-row"><span class="s-key">Durum</span><span class="s-val" id="pwaInstallStatus">—</span></div>
+          <div id="pwaInstallMeta" style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:8px">—</div>
+          <div id="pwaInstallSteps" class="pwa-install-steps hidden"></div>
+        </div>
+        <div class="s-card-foot" id="pwaInstallActions"></div>
+      </div>
+      <div class="s-card">
         <div class="s-head">🤖 AI Bağlantısı</div>
         <div class="s-body">
           <div class="s-row"><span class="s-key">Groq API</span><span class="s-val" id="s-grq">—</span></div>
           <div class="fg" style="margin-top:.75rem;margin-bottom:0">
             <label class="form-label" for="setGroq">Groq API Key</label>
             <div class="input-secret-wrap">
-              <input class="form-input" id="setGroq" placeholder="gsk_..." type="password" autocomplete="off">
+              <input class="form-input" id="setGroq" placeholder="gsk_..." type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="verbatim">
               <button type="button" class="secret-toggle" onclick="toggleSecret('setGroq', this)" aria-label="Groq API Key göster">
                 <svg class="secret-icon secret-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/></svg>
                 <svg class="secret-icon secret-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3l18 18M10.5 10.677a3 3 0 004.243 4.243M9.27 9.27 5.36 5.36A10.8 10.8 0 0112 5c6.5 0 10 7 10 7a18.2 18.2 0 01-4.58 5.32M6.53 6.53C3.62 8.56 2 12 2 12s3.5 7 10 7c1.05 0 2.05-.15 2.98-.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -474,6 +496,7 @@
         </div>
         <div class="s-card-foot">
           <button class="btn btn-teal" type="button" onclick="saveGroqKey()">Groq Key Kaydet</button>
+          <button class="btn btn-outline" type="button" onclick="testGroqKey()">Bağlantıyı Test Et</button>
         </div>
       </div>
       <div class="s-card">
@@ -510,6 +533,13 @@
           </div>
         </div>
         <div class="s-card-foot" id="cloudSyncActions"></div>
+      </div>
+      <div class="s-card">
+        <div class="s-head">📱 Cihaz Eşleştirme (QR)</div>
+        <div class="s-body">
+          <div id="devicePairingMeta" style="font-size:11px;color:var(--text3);line-height:1.5">—</div>
+        </div>
+        <div class="s-card-foot" id="devicePairingActions"></div>
       </div>
       <div class="s-card">
         <div class="s-head">💾 Manuel Yedek</div>
@@ -616,6 +646,38 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closePinModal()">İptal</button>
       <button class="btn btn-teal" onclick="changePin()">Değiştir</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR PAIR HOST (desktop) -->
+<div class="modal-bg" id="pairHostModal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-head"><span class="modal-title">📱 Cihaz Eşleştir</span><button class="modal-x" type="button" onclick="closePairingHostModal()">×</button></div>
+    <div class="modal-body pair-modal-body">
+      <p class="pair-lead">Telefonundan <strong>Ayarlar → QR Kod Tara</strong> ile bu kodu okut.</p>
+      <div class="pair-qr-wrap" id="pairHostQr"></div>
+      <div class="pair-code">Doğrulama: <span id="pairHostCode">—</span></div>
+      <div class="pair-status" id="pairHostStatus">—</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" onclick="closePairingHostModal()">Kapat</button>
+      <button class="btn btn-teal" type="button" onclick="openPairingHostModal()">Yeni QR</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR PAIR SCAN (mobile) -->
+<div class="modal-bg" id="pairScanModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><span class="modal-title">📷 QR Kod Tara</span><button class="modal-x" type="button" onclick="closePairingScanModal()">×</button></div>
+    <div class="modal-body pair-modal-body">
+      <p class="pair-lead">Masaüstündeki eşleştirme QR kodunu kadraja getir.</p>
+      <div class="pair-scan-wrap"><div id="pairScanReader"></div></div>
+      <div class="pair-status" id="pairScanStatus">—</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" type="button" onclick="closePairingScanModal()">Kapat</button>
     </div>
   </div>
 </div>

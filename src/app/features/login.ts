@@ -1,5 +1,4 @@
 import { AVATARS } from '@/data/constants';
-import { ensureSampleTasks } from '@/data/sample-tasks';
 import { deleteUser, getRegistry, loadUserData, updateUserProfile } from '@/lib/storage/user-storage';
 import { tasksForWeek, todayIso } from '@/lib/tasks/week';
 import { esc, showScreen } from '@/lib/utils';
@@ -8,6 +7,8 @@ import { openUserSession } from '@/app/state';
 import { toast } from '@/app/toast';
 import { enterApp } from '@/app/features/shell';
 import { renderCloudSyncLogin } from '@/app/features/cloud-sync';
+import { renderLoginInstallHint } from '@/lib/pwa/install';
+import { renderLoginPairingHint } from '@/app/features/device-pairing';
 
 const SHOWCASE_PRIORITY = {
   high: { cls: 'p-high', label: 'Yüksek' },
@@ -38,6 +39,8 @@ export function buildLogin(preferredUserId: string | null = null): void {
   renderSelectedUser();
   renderLoginShowcase(selectedUserId);
   renderCloudSyncLogin();
+  renderLoginInstallHint();
+  renderLoginPairingHint();
   resetPinInput();
   bindPinKeyboard();
   focusPinInput();
@@ -234,7 +237,7 @@ function renderLoginShowcase(userId: string | null): void {
     return;
   }
 
-  const syncedTasks = ensureSampleTasks(data.tasks);
+  const syncedTasks = data.tasks ?? [];
   const weekTasks = tasksForWeek(syncedTasks, 0);
   const stats = computeShowcaseStats(syncedTasks, weekTasks);
 

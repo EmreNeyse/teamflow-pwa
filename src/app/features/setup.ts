@@ -1,4 +1,5 @@
 import { AVATARS } from '@/data/constants';
+import { normalizeGroqKey } from '@/lib/ai/client';
 import type { UserProfile } from '@/types';
 import {
   createUser,
@@ -48,6 +49,9 @@ export function buildSetup(): void {
   const title = document.getElementById('setupTitle');
   if (title) title.textContent = editingUserId ? 'Profili Düzenle' : 'Yeni Hesap Oluştur';
   renderCloudSyncLogin();
+  void import('@/app/features/device-pairing').then(({ renderSetupPairingHint }) => {
+    renderSetupPairingHint();
+  });
 }
 
 export function finishSetup(): void {
@@ -70,10 +74,12 @@ export function finishSetup(): void {
     return;
   }
 
-  const groqKey = (document.getElementById('sGroq') as HTMLInputElement).value.trim();
+  const existingCfg = editingUserId ? (loadUserData(editingUserId)?.cfg ?? {}) : {};
+  const rawGroq = (document.getElementById('sGroq') as HTMLInputElement).value;
+  const groqKey = normalizeGroqKey(rawGroq) || normalizeGroqKey(existingCfg.groq);
   const cfg = {
-    ...(editingUserId ? (loadUserData(editingUserId)?.cfg ?? {}) : {}),
-    groq: groqKey,
+    ...existingCfg,
+    groq: groqKey || undefined,
   };
 
   if (editingUserId) {
@@ -101,6 +107,9 @@ export function finishSetup(): void {
   toast('Hesap oluşturuldu ✓', 'ok');
   buildLogin(created.profile.id);
   showScreen('loginScreen');
+  void import('@/app/features/device-pairing').then(({ renderLoginPairingHint }) => {
+    renderLoginPairingHint();
+  });
 }
 
 export function goSetup(fromApp = false): void {

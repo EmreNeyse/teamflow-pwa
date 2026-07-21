@@ -1,4 +1,5 @@
 import { AVATARS } from '@/data/constants';
+import { normalizeGroqKey, isGroqKeyFormat, verifyGroqKey, groqErrorMessage } from '@/lib/ai/client';
 import { downloadUserBackup, importUserBackup } from '@/lib/storage/backup';
 import {
   deleteUser,
@@ -8,6 +9,8 @@ import {
 import { getCurrentUserId, getState, openUserSession, patchState } from '@/app/state';
 import { toast } from '@/app/toast';
 import { renderCloudSyncSettings } from '@/app/features/cloud-sync';
+import { renderInstallSettings } from '@/lib/pwa/install';
+import { renderDevicePairingSettings } from '@/app/features/device-pairing';
 import { goSetup } from '@/app/features/setup';
 import { buildLogin } from '@/app/features/login';
 import { closeModal } from '@/app/features/tasks';
@@ -35,6 +38,8 @@ export function renderSettings(): void {
   }
 
   resetSecretToggles(document.getElementById('tc-settings'));
+  renderInstallSettings();
+  renderDevicePairingSettings();
   renderCloudSyncSettings();
 }
 
@@ -58,14 +63,55 @@ function resetSecretToggles(root: ParentNode | null): void {
   });
 }
 
-export function saveGroqKey(): void {
-  const groqKey = (document.getElementById('setGroq') as HTMLInputElement).value.trim();
+export async function saveGroqKey(): Promise<void> {
+  const raw = (document.getElementById('setGroq') as HTMLInputElement).value;
+  const groqKey = normalizeGroqKey(raw);
+
+  if (groqKey && !isGroqKeyFormat(groqKey)) {
+    toast('Geçersiz format — Groq anahtarı gsk_ ile başlamalı', 'err');
+    return;
+  }
+
   patchState((state) => ({
     ...state,
-    cfg: { ...state.cfg, groq: groqKey },
+    cfg: { ...state.cfg, groq: groqKey || undefined },
   }));
   renderSettings();
-  toast(groqKey ? 'Groq API key kaydedildi ✓' : 'Groq API key kaldırıldı', groqKey ? 'ok' : '');
+
+  if (!groqKey) {
+    toast('Groq API key kaldırıldı');
+    return;
+  }
+
+  try {
+    await verifyGroqKey(groqKey);
+    toast('Groq API key kaydedildi ve doğrulandı ✓', 'ok');
+  } catch (error) {
+    toast(groqErrorMessage(error), 'err');
+  }
+}
+
+export async function testGroqKey(): Promise<void> {
+  const saved = normalizeGroqKey(getState().cfg?.groq);
+  const draft = normalizeGroqKey((document.getElementById('setGroq') as HTMLInputElement).value);
+  const groqKey = draft || saved;
+
+  if (!groqKey) {
+    toast('Önce Groq API key gir', 'err');
+    return;
+  }
+
+  if (!isGroqKeyFormat(groqKey)) {
+    toast('Geçersiz format — Groq anahtarı gsk_ ile başlamalı', 'err');
+    return;
+  }
+
+  try {
+    await verifyGroqKey(groqKey);
+    toast('Groq bağlantısı çalışıyor ✓', 'ok');
+  } catch (error) {
+    toast(groqErrorMessage(error), 'err');
+  }
 }
 
 export function exportAccountBackup(): void {

@@ -2,6 +2,14 @@ import { restoreSessionFromStorage } from '@/app/state';
 import { migrateAllUserDemoTasks } from '@/lib/tasks/demo-sync';
 import { initStorage, getRegistry } from '@/lib/storage/user-storage';
 import { showScreen } from '@/lib/utils';
+import {
+  closePairingHostModal,
+  closePairingScanModal,
+  consumePairingFromUrl,
+  openPairingHostModal,
+  openPairingScanModal,
+} from '@/app/features/device-pairing';
+import { installPwaApp } from '@/lib/pwa/install';
 import { buildSetup, finishSetup, goLogin, goSetup, startNewAccount } from '@/app/features/setup';
 import { buildLogin, cancelForgotPin, logout, openForgotPin, saveForgotPin } from '@/app/features/login';
 import {
@@ -32,6 +40,7 @@ import { buildReport, chReportWeek, downloadReport, renderReports, switchReportT
 import {
   disableCloudSync,
   enableCloudSync,
+  bindCloudSyncEvents,
   pullCloudNow,
   renderCloudSyncLogin,
   signInFromCloudOnLogin,
@@ -48,6 +57,7 @@ import {
   hardReset,
   renderSettings,
   saveGroqKey,
+  testGroqKey,
   toggleSecret,
   triggerImportBackup,
 } from '@/app/features/settings';
@@ -92,6 +102,7 @@ declare global {
     viewReport: typeof viewReport;
     renderSettings: typeof renderSettings;
     saveGroqKey: typeof saveGroqKey;
+    testGroqKey: typeof testGroqKey;
     exportAccountBackup: typeof exportAccountBackup;
     triggerImportBackup: typeof triggerImportBackup;
     handleImportBackupFile: typeof handleImportBackupFile;
@@ -103,6 +114,11 @@ declare global {
     signInFromCloudOnSetup: typeof signInFromCloudOnSetup;
     hardReset: typeof hardReset;
     deleteAccount: typeof deleteAccount;
+    installPwaApp: typeof installPwaApp;
+    openPairingHostModal: typeof openPairingHostModal;
+    openPairingScanModal: typeof openPairingScanModal;
+    closePairingHostModal: typeof closePairingHostModal;
+    closePairingScanModal: typeof closePairingScanModal;
     closePinModal: typeof closePinModal;
     changePin: typeof changePin;
     toggleSecret: typeof toggleSecret;
@@ -116,6 +132,7 @@ export function boot(): void {
   migrateAllUserDemoTasks();
   bindShellEvents();
   bindChatSuggestEvents();
+  bindCloudSyncEvents();
   renderCloudSyncLogin();
 
   document.querySelectorAll('.modal-bg').forEach((overlay) => {
@@ -124,6 +141,13 @@ export function boot(): void {
     });
   });
 
+  void consumePairingFromUrl().then((paired) => {
+    if (paired) return;
+    continueBoot();
+  });
+}
+
+function continueBoot(): void {
   const registry = getRegistry();
   if (!registry.users.length) {
     buildSetup();
@@ -181,6 +205,7 @@ export function registerWindowApi(): void {
   window.viewReport = viewReport;
   window.renderSettings = renderSettings;
   window.saveGroqKey = saveGroqKey;
+  window.testGroqKey = testGroqKey;
   window.exportAccountBackup = exportAccountBackup;
   window.triggerImportBackup = triggerImportBackup;
   window.handleImportBackupFile = handleImportBackupFile;
@@ -192,6 +217,11 @@ export function registerWindowApi(): void {
   window.signInFromCloudOnSetup = signInFromCloudOnSetup;
   window.hardReset = hardReset;
   window.deleteAccount = deleteAccount;
+  window.installPwaApp = installPwaApp;
+  window.openPairingHostModal = openPairingHostModal;
+  window.openPairingScanModal = openPairingScanModal;
+  window.closePairingHostModal = closePairingHostModal;
+  window.closePairingScanModal = closePairingScanModal;
   window.closePinModal = closePinModal;
   window.changePin = changePin;
   window.toggleSecret = toggleSecret;

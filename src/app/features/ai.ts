@@ -1,5 +1,5 @@
 import { AI_PROMPTS } from '@/data/constants';
-import { askAI } from '@/lib/ai/client';
+import { askAI, groqErrorMessage } from '@/lib/ai/client';
 import { buildGroupHeadSystemPrompt } from '@/lib/ai/prompts';
 import { sanitizeTurkishReply } from '@/lib/ai/sanitize';
 import { tasksForWeek, weekLabel, normalizeWeekOffset } from '@/lib/tasks/week';
@@ -57,14 +57,15 @@ export async function sendMsg(): Promise<void> {
   const loadingId = addMsg('ai', '<div class="ldots"><span></span><span></span><span></span></div>');
 
   try {
-    const reply = await askAI(buildGroupHeadSystemPrompt(getState()), text, getState().cfg);
+    const state = getState();
+    const reply = await askAI(buildGroupHeadSystemPrompt(state), text, state.cfg);
     if (!reply) {
       updateMsg(loadingId, buildDemoReply(text));
       return;
     }
     updateMsg(loadingId, sanitizeTurkishReply(reply));
-  } catch {
-    updateMsg(loadingId, 'Bağlantı hatası. Groq API anahtarını ve internet bağlantını kontrol et.');
+  } catch (error) {
+    updateMsg(loadingId, groqErrorMessage(error));
   }
 }
 

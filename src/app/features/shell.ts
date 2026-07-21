@@ -16,6 +16,21 @@ import { closeReportDownloadMenu, renderReports } from '@/app/features/reports';
 import { renderSettings } from '@/app/features/settings';
 import { renderTasks } from '@/app/features/tasks';
 
+export function refreshAppFromState(): void {
+  const state = getState();
+  const profile = state.profile;
+
+  (document.getElementById('navAv') as HTMLElement).textContent = AVATARS[profile.avatarIdx] ?? AVATARS[0];
+  (document.getElementById('navNm') as HTMLElement).textContent = profile.name;
+  (document.getElementById('pdAv') as HTMLElement).textContent = AVATARS[profile.avatarIdx] ?? AVATARS[0];
+  (document.getElementById('pdName') as HTMLElement).textContent = `${profile.name} ${profile.surname || ''}`.trim();
+  (document.getElementById('pdEmail') as HTMLElement).textContent = profile.email || '—';
+
+  renderTasks();
+  renderReports();
+  refreshNotifications(state);
+}
+
 export function enterApp(): void {
   patchState((state) => syncDemoTasksForUser({ ...state, filter: 'all' }));
 
@@ -34,13 +49,14 @@ export function enterApp(): void {
   renderReports();
   refreshNotifications(state);
 
-  void import('@/app/features/cloud-sync').then(({ runCloudSyncOnAppEnter }) => {
+  void import('@/app/features/cloud-sync').then(({ applyCloudSyncResult, renderCloudSyncBanner, runCloudSyncOnAppEnter }) => {
+    renderCloudSyncBanner();
+    void import('@/lib/pwa/install').then(({ renderAppInstallBanner, handlePwaDeepLink }) => {
+      renderAppInstallBanner();
+      handlePwaDeepLink();
+    });
     void runCloudSyncOnAppEnter().then((result) => {
-      if (result === 'pulled') {
-        renderTasks();
-        renderReports();
-        refreshNotifications(getState());
-      }
+      applyCloudSyncResult(result, { notify: false });
     });
   });
 }
