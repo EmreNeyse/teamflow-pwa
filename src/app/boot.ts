@@ -35,6 +35,7 @@ import {
   saveTask,
   setF,
 } from '@/app/features/tasks';
+import { archAssign, archToggle, archToggleAll, renderArchive } from '@/app/features/archive';
 import { aiTrig, bindChatSuggestEvents, closeChatSuggestions, sendMsg, toggleChatSuggestions } from '@/app/features/ai';
 import { buildReport, chReportWeek, downloadReport, renderReports, switchReportTab, toggleReportDownloadMenu, viewReport } from '@/app/features/reports';
 import {
@@ -80,6 +81,10 @@ declare global {
     toggleNotifMenu: typeof toggleNotificationMenu;
     markAllRead: typeof markAllRead;
     chWeek: typeof chWeek;
+    renderArchive: typeof renderArchive;
+    archToggle: typeof archToggle;
+    archToggleAll: typeof archToggleAll;
+    archAssign: typeof archAssign;
     setF: typeof setF;
     openNewTask: typeof openNewTask;
     saveTask: typeof saveTask;
@@ -183,6 +188,10 @@ export function registerWindowApi(): void {
   window.toggleNotifMenu = toggleNotificationMenu;
   window.markAllRead = markAllRead;
   window.chWeek = chWeek;
+  window.renderArchive = renderArchive;
+  window.archToggle = archToggle;
+  window.archToggleAll = archToggleAll;
+  window.archAssign = archAssign;
   window.setF = setF;
   window.openNewTask = openNewTask;
   window.saveTask = saveTask;

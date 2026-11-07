@@ -49,6 +49,8 @@ export interface Task {
   wk: string;
   created: string;
   notes: TaskNote[];
+  /** Görev otomatik olarak sonraki haftaya devredildiyse ilk ait olduğu hafta. */
+  carriedFrom?: string;
 }
 
 export interface Report {
@@ -87,6 +89,8 @@ export interface UserData {
   notifications: AppNotification[];
   routineFlags: RoutineFlags;
   wkOff: number;
+  /** Arka planda takip edilen son hafta (Pazartesi, YYYY-MM-DD). */
+  currentWeek?: string;
   filter: 'all' | TaskPriority;
   darkMode?: boolean;
   ready: boolean;

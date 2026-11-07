@@ -3,6 +3,7 @@ import { esc } from '@/lib/utils';
 import { weekKey, weekLabel, todayIso, normalizeWeekOffset } from '@/lib/tasks/week';
 import { getState, patchState } from '@/app/state';
 import { toast } from '@/app/toast';
+import { renderArchive } from '@/app/features/archive';
 
 let editId: string | null = null;
 let dragId: string | null = null;
@@ -135,7 +136,7 @@ export function chWeek(delta: number): void {
 
 export function setF(filter: 'all' | TaskPriority, element: HTMLElement): void {
   patchState((state) => ({ ...state, filter }));
-  document.querySelectorAll('.fpill').forEach((pill) => pill.classList.remove('active'));
+  document.querySelectorAll('.fpill[data-prio]').forEach((pill) => pill.classList.remove('active'));
   element.classList.add('active');
   renderTasks();
 }
@@ -168,7 +169,9 @@ export function saveTask(): void {
     status: (document.getElementById('fStatus') as HTMLSelectElement).value as TaskStatus,
     due: (document.getElementById('fDue') as HTMLInputElement).value,
     tag: (document.getElementById('fTag') as HTMLInputElement).value.trim(),
-    wk: weekKey(state.wkOff),
+    // Düzenlenen görev kendi haftasında kalır; yeni görev görüntülenen haftaya eklenir.
+    wk: existing?.wk ?? weekKey(state.wkOff),
+    ...(existing?.carriedFrom ? { carriedFrom: existing.carriedFrom } : {}),
     created: new Date().toISOString(),
     notes: existing?.notes ?? [],
   };
@@ -181,9 +184,10 @@ export function saveTask(): void {
     return { ...current, tasks, filter: 'all' };
   });
 
-  document.querySelectorAll('.fpill').forEach((pill, index) => pill.classList.toggle('active', index === 0));
+  document.querySelectorAll('.fpill[data-prio]').forEach((pill, index) => pill.classList.toggle('active', index === 0));
   closeModal('taskModal');
   renderTasks();
+  renderArchive();
   toast(editId ? 'Güncellendi ✓' : 'Görev eklendi ✓', 'ok');
 }
 
@@ -267,6 +271,7 @@ export function deleteTask(id: string): void {
 
   closeModal('detailModal');
   renderTasks();
+  renderArchive();
   toast('Görev silindi');
 }
 

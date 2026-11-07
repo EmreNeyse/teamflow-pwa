@@ -300,6 +300,7 @@
     </div>
     <div class="nav-links nav-links--desktop" role="tablist" aria-label="Ana menü">
       <button type="button" class="nav-tab active" id="tab-tasks" data-nav-tab="tasks" role="tab" onclick="switchTab('tasks')">📋 Tasklar</button>
+      <button type="button" class="nav-tab" id="tab-archive" data-nav-tab="archive" role="tab" onclick="switchTab('archive')">🗂 Geçmiş</button>
       <button type="button" class="nav-tab" id="tab-ai" data-nav-tab="ai" role="tab" onclick="switchTab('ai')">🤖 AI Head</button>
       <button type="button" class="nav-tab" id="tab-reports" data-nav-tab="reports" role="tab" onclick="switchTab('reports')">📊 Raporlar</button>
     </div>
@@ -347,10 +348,10 @@
       <div class="pwa-install-banner hidden" id="pwaInstallBanner"></div>
       <div class="cloud-sync-banner hidden" id="cloudSyncBanner"></div>
       <div class="board-ctrl">
-        <button class="fpill active" onclick="setF('all',this)">Tümü</button>
-        <button class="fpill" onclick="setF('high',this)">🔴 Yüksek</button>
-        <button class="fpill" onclick="setF('medium',this)">🟡 Orta</button>
-        <button class="fpill" onclick="setF('low',this)">🟢 Düşük</button>
+        <button class="fpill active" data-prio="all" onclick="setF('all',this)">Tümü</button>
+        <button class="fpill" data-prio="high" onclick="setF('high',this)">🔴 Yüksek</button>
+        <button class="fpill" data-prio="medium" onclick="setF('medium',this)">🟡 Orta</button>
+        <button class="fpill" data-prio="low" onclick="setF('low',this)">🟢 Düşük</button>
         <div class="week-nav">
           <button class="warr" onclick="chWeek(-1)">‹</button>
           <span class="week-lbl" id="weekLbl">Bu Hafta</span>
@@ -370,6 +371,53 @@
           <div class="k-head"><div class="k-title"><div class="k-dot done"></div><span class="k-name">Tamamlandı</span></div><span class="k-cnt" id="cnt-done">0</span></div>
           <div class="k-tasks" id="col-done"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ARCHIVE -->
+    <div id="tc-archive" class="tab-content">
+      <div class="page-header">
+        <div><div class="page-title">🗂 Geçmiş Haftalar</div><div class="page-sub" id="archSub">—</div></div>
+      </div>
+      <div class="board-ctrl arch-ctrl">
+        <input class="form-input arch-search" id="archSearch" type="search" placeholder="Görev veya etiket ara..." oninput="renderArchive()">
+        <select class="form-input arch-select" id="archWeek" aria-label="Hafta" onchange="renderArchive()"></select>
+        <select class="form-input arch-select" id="archStatus" aria-label="Durum" onchange="renderArchive()">
+          <option value="all">Tüm durumlar</option>
+          <option value="todo">Yapılacak</option>
+          <option value="inprogress">Devam Ediyor</option>
+          <option value="done">Tamamlandı</option>
+        </select>
+      </div>
+      <div class="arch-assign">
+        <span class="arch-sel-count" id="archSelCount">Görev seçilmedi</span>
+        <div class="arch-assign-fields">
+          <label class="arch-field"><span>Hedef hafta</span><select class="form-input" id="archTargetWeek"></select></label>
+          <label class="arch-field"><span>Durum</span>
+            <select class="form-input" id="archTargetStatus">
+              <option value="todo">Yapılacak</option>
+              <option value="inprogress">Devam Ediyor</option>
+              <option value="done">Tamamlandı</option>
+            </select>
+          </label>
+          <button class="btn btn-teal" id="archAssignBtn" onclick="archAssign()" disabled>Haftaya Ata</button>
+        </div>
+      </div>
+      <div class="arch-table-wrap">
+        <table class="arch-table">
+          <thead>
+            <tr>
+              <th class="arch-chk"><input type="checkbox" id="archAll" aria-label="Tümünü seç" onchange="archToggleAll(this.checked)"></th>
+              <th>Görev</th>
+              <th>Hafta</th>
+              <th>Öncelik</th>
+              <th>Durum</th>
+              <th class="arch-hide-sm">Etiket</th>
+              <th class="arch-hide-sm">Bitiş</th>
+            </tr>
+          </thead>
+          <tbody id="archBody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -562,6 +610,10 @@
     <button type="button" class="bottom-nav-tab active" data-nav-tab="tasks" role="tab" onclick="switchTab('tasks')">
       <span class="bottom-nav-icon" aria-hidden="true">📋</span>
       <span class="bottom-nav-label">Tasklar</span>
+    </button>
+    <button type="button" class="bottom-nav-tab" data-nav-tab="archive" role="tab" onclick="switchTab('archive')">
+      <span class="bottom-nav-icon" aria-hidden="true">🗂</span>
+      <span class="bottom-nav-label">Geçmiş</span>
     </button>
     <button type="button" class="bottom-nav-tab" data-nav-tab="ai" role="tab" onclick="switchTab('ai')">
       <span class="bottom-nav-icon" aria-hidden="true">🤖</span>

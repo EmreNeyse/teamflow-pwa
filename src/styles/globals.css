@@ -2821,3 +2821,63 @@ body.dark .app-nav{box-shadow:0 4px 24px rgba(0,0,0,.25)}
   .chart-arc,.sparkline polyline{animation:none;stroke-dasharray:none;stroke-dashoffset:0}
   .vbar-fill,.hbar-fill,.dash-progress-fill,.dash-kpi,.dash-panel{animation:none}
 }
+
+/* ARCHIVE — Geçmiş Haftalar */
+.arch-ctrl{gap:8px}
+.arch-ctrl .form-input{height:36px;padding:0 12px;width:auto}
+.arch-search{flex:1 1 220px;min-width:0}
+.arch-select{flex:0 1 220px;min-width:0}
+.arch-assign{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-bottom:1rem;padding:12px 14px;
+  background:var(--glass-bg);
+  backdrop-filter:blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(160%);
+  border:1px solid var(--glass-border);border-radius:var(--radius);box-shadow:var(--shadow);
+}
+.arch-sel-count{font-size:13px;font-weight:700;color:var(--text2)}
+.arch-assign-fields{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.arch-field{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.arch-field .form-input{height:36px;padding:0 10px;width:auto;min-width:150px;text-transform:none;letter-spacing:0;font-weight:500}
+#archAssignBtn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.arch-table-wrap{
+  overflow-x:auto;
+  background:var(--glass-bg);
+  backdrop-filter:blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(160%);
+  border:1px solid var(--glass-border);border-radius:var(--radius);box-shadow:var(--shadow);
+}
+.arch-table{width:100%;border-collapse:collapse;font-size:13px;color:var(--text)}
+.arch-table th{
+  text-align:left;padding:11px 12px;font-size:10px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--glass-border-subtle);
+  background:rgba(255,255,255,.08);white-space:nowrap;
+}
+.arch-table td{padding:10px 12px;border-bottom:1px solid var(--glass-border-subtle);vertical-align:middle}
+.arch-table tbody tr:last-child td{border-bottom:none}
+.arch-table tbody tr[data-id]{cursor:pointer;transition:background .2s ease}
+.arch-table tbody tr[data-id]:hover{background:rgba(249,115,22,.06)}
+.arch-table tbody tr.sel{background:var(--orange-bg)}
+.arch-chk{width:36px}
+.arch-chk input{width:16px;height:16px;accent-color:var(--orange);cursor:pointer}
+.arch-nowrap{white-space:nowrap;color:var(--text2)}
+.arch-link{background:none;border:none;padding:0;font:inherit;font-weight:600;color:var(--text);cursor:pointer;text-align:left}
+.arch-link:hover{color:var(--orange)}
+.arch-title{min-width:150px}
+.arch-note{font-size:11px;color:var(--text3);margin-top:2px}
+.arch-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap;color:var(--text2)}
+.arch-status::before{content:"";width:8px;height:8px;border-radius:50%}
+.arch-status.st-todo::before{background:#3b82f6}
+.arch-status.st-inp::before{background:#22c55e}
+.arch-status.st-done::before{background:#ef4444}
+.arch-table .empty-col{padding:2rem 0}
+@media(max-width:768px){
+  .arch-hide-sm{display:none}
+  .arch-select,.arch-search{flex:1 1 100%}
+  .arch-ctrl .form-input{width:100%}
+  .arch-assign-fields{width:100%}
+  .arch-field{flex:1 1 140px}
+  .arch-field .form-input{width:100%;min-width:0}
+  #archAssignBtn{flex:1 1 100%}
+  .arch-table td,.arch-table th{padding:9px 8px}
+}

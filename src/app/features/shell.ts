@@ -10,11 +10,13 @@ import {
 import { syncDemoTasksForUser } from '@/lib/tasks/demo-sync';
 import { getRegistry } from '@/lib/storage/user-storage';
 import { showScreen } from '@/lib/utils';
-import { closeUserSession, getState, patchState } from '@/app/state';
+import { checkWeekRollover, closeUserSession, consumeRolloverCarried, getState, patchState } from '@/app/state';
 import { closeChatSuggestions } from '@/app/features/ai';
 import { closeReportDownloadMenu, renderReports } from '@/app/features/reports';
 import { renderSettings } from '@/app/features/settings';
 import { renderTasks } from '@/app/features/tasks';
+import { renderArchive } from '@/app/features/archive';
+import { toast } from '@/app/toast';
 
 export function refreshAppFromState(): void {
   const state = getState();
@@ -28,11 +30,14 @@ export function refreshAppFromState(): void {
 
   renderTasks();
   renderReports();
+  renderArchive();
   refreshNotifications(state);
 }
 
 export function enterApp(): void {
-  patchState((state) => syncDemoTasksForUser({ ...state, filter: 'all' }));
+  // Uygulama her açıldığında varsayılan olarak bu hafta gösterilir.
+  patchState((state) => syncDemoTasksForUser({ ...state, filter: 'all', wkOff: 0 }));
+  document.querySelectorAll('.fpill[data-prio]').forEach((pill, index) => pill.classList.toggle('active', index === 0));
 
   const state = getState();
   const profile = state.profile;
@@ -47,7 +52,10 @@ export function enterApp(): void {
   applyDarkMode();
   renderTasks();
   renderReports();
+  renderArchive();
   refreshNotifications(state);
+  notifyCarried();
+  startWeekWatcher();
 
   void import('@/app/features/cloud-sync').then(({ applyCloudSyncResult, renderCloudSyncBanner, runCloudSyncOnAppEnter }) => {
     renderCloudSyncBanner();
@@ -61,7 +69,39 @@ export function enterApp(): void {
   });
 }
 
-export function switchTab(tab: 'tasks' | 'ai' | 'reports' | 'settings'): void {
+function notifyCarried(): void {
+  const carried = consumeRolloverCarried();
+  if (carried > 0) {
+    toast(`Yeni hafta: ${carried} tamamlanmamış görev bu haftanın Yapılacak listesine eklendi`, 'ok');
+  }
+}
+
+let weekWatcherStarted = false;
+
+/** Arka planda takvim haftasını izler; hafta değişince devri uygular ve bu haftaya döner. */
+function startWeekWatcher(): void {
+  if (weekWatcherStarted) return;
+  weekWatcherStarted = true;
+
+  const check = () => {
+    if (!document.getElementById('appScreen')?.classList.contains('active')) return;
+    try {
+      if (!checkWeekRollover()) return;
+    } catch {
+      return;
+    }
+    refreshAppFromState();
+    notifyCarried();
+  };
+
+  window.setInterval(check, 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') check();
+  });
+  window.addEventListener('focus', check);
+}
+
+export function switchTab(tab: AppTab): void {
   if (tab !== 'ai') closeChatSuggestions();
   if (tab !== 'reports') closeReportDownloadMenu();
 
@@ -69,15 +109,18 @@ export function switchTab(tab: 'tasks' | 'ai' | 'reports' | 'settings'): void {
 
   if (tab === 'reports') renderReports();
   if (tab === 'settings') renderSettings();
+  if (tab === 'archive') renderArchive();
 }
 
-function setActiveNavTab(tab: 'tasks' | 'ai' | 'reports' | 'settings'): void {
+type AppTab = 'tasks' | 'archive' | 'ai' | 'reports' | 'settings';
+
+function setActiveNavTab(tab: AppTab): void {
   document.querySelectorAll('[data-nav-tab]').forEach((element) => {
     const navTab = element.getAttribute('data-nav-tab');
     element.classList.toggle('active', tab !== 'settings' && navTab === tab);
   });
 
-  (['tasks', 'ai', 'reports', 'settings'] as const).forEach((name) => {
+  (['tasks', 'archive', 'ai', 'reports', 'settings'] as const).forEach((name) => {
     document.getElementById(`tc-${name}`)?.classList.toggle('active', name === tab);
   });
 }

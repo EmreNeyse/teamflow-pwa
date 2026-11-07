@@ -34,3 +34,26 @@ export function todayIso(): string {
 export function normalizeWeekOffset(offset: unknown): number {
   return Number.isFinite(offset) ? Number(offset) : 0;
 }
+
+function parseWeekKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+}
+
+/** Verilen hafta anahtarının bu haftaya göre offset'i (geçmiş haftalar negatif). */
+export function offsetForWeek(key: string): number {
+  const diff = parseWeekKey(key).getTime() - parseWeekKey(weekKey(0)).getTime();
+  return Math.round(diff / (7 * 24 * 60 * 60 * 1000));
+}
+
+/** "2–8 Kas 2026" biçiminde hafta aralığı etiketi. */
+export function weekRangeLabel(key: string): string {
+  const start = parseWeekKey(key);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const month = (date: Date) => date.toLocaleDateString('tr-TR', { month: 'short' });
+  const startText = start.getMonth() === end.getMonth()
+    ? String(start.getDate())
+    : `${start.getDate()} ${month(start)}`;
+  return `${startText}–${end.getDate()} ${month(end)} ${end.getFullYear()}`;
+}
