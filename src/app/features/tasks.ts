@@ -1,6 +1,7 @@
 import type { Task, TaskPriority, TaskStatus } from '@/types';
 import { esc } from '@/lib/utils';
-import { weekKey, weekLabel, todayIso, normalizeWeekOffset } from '@/lib/tasks/week';
+import { weekKey, weekLabel, weekRangeLabel, todayIso, normalizeWeekOffset, offsetForWeek } from '@/lib/tasks/week';
+import { openWeekPicker } from '@/app/features/week-picker';
 import { getState, patchState } from '@/app/state';
 import { toast } from '@/app/toast';
 import { renderArchive } from '@/app/features/archive';
@@ -25,8 +26,8 @@ export function renderTasks(): void {
     patchState((current) => ({ ...current, wkOff }));
   }
 
-  (document.getElementById('weekLbl') as HTMLElement).textContent = weekLabel(wkOff);
-  (document.getElementById('boardSub') as HTMLElement).textContent = `Hafta: ${week}`;
+  (document.getElementById('weekLbl') as HTMLElement).textContent = Math.abs(wkOff) > 1 ? weekRangeLabel(week) : weekLabel(wkOff);
+  (document.getElementById('boardSub') as HTMLElement).textContent = `Hafta: ${weekRangeLabel(week)}${Math.abs(wkOff) > 1 ? ` · ${weekLabel(wkOff)}` : ''}`;
 
   let tasks = allTasks.filter((task) => task.wk === week);
   if (state.filter !== 'all') tasks = tasks.filter((task) => task.prio === state.filter);
@@ -61,6 +62,8 @@ function buildCard(task: Task): string {
         <span class="ptag ${priority.cls}">${priority.label}</span>
         ${task.due ? `<span class="dtag${overdue ? ' ov' : ''}">📅 ${task.due}</span>` : ''}
         ${task.tag ? `<span class="dtag">🏷 ${esc(task.tag)}</span>` : ''}
+        ${task.carriedFrom ? `<span class="dtag dtag-carry" title="${esc(weekRangeLabel(task.carriedFrom))} haftasından aktarıldı">↩ Önceki haftadan</span>` : ''}
+        ${task.carriedTo ? `<span class="dtag dtag-carry" title="${esc(weekRangeLabel(task.carriedTo))} haftasına aktarıldı">➜ ${esc(weekRangeLabel(task.carriedTo))}</span>` : ''}
       </div>
     </div>
   `;
@@ -134,6 +137,13 @@ export function chWeek(delta: number): void {
   if (rptWeekLbl) rptWeekLbl.textContent = weekLabel(wkOff);
 }
 
+export function openBoardWeekPicker(anchor: HTMLElement): void {
+  openWeekPicker(anchor, weekKey(normalizeWeekOffset(getState().wkOff)), (week) => {
+    const delta = offsetForWeek(week) - normalizeWeekOffset(getState().wkOff);
+    if (delta) chWeek(delta);
+  });
+}
+
 export function setF(filter: 'all' | TaskPriority, element: HTMLElement): void {
   patchState((state) => ({ ...state, filter }));
   document.querySelectorAll('.fpill[data-prio]').forEach((pill) => pill.classList.remove('active'));
@@ -162,6 +172,7 @@ export function saveTask(): void {
   const state = getState();
   const existing = editId ? state.tasks.find((task) => task.id === editId) : undefined;
   const task: Task = {
+    ...existing,
     id: editId ?? `t${Date.now()}`,
     title,
     desc: (document.getElementById('fDesc') as HTMLTextAreaElement).value.trim(),
@@ -171,8 +182,7 @@ export function saveTask(): void {
     tag: (document.getElementById('fTag') as HTMLInputElement).value.trim(),
     // Düzenlenen görev kendi haftasında kalır; yeni görev görüntülenen haftaya eklenir.
     wk: existing?.wk ?? weekKey(state.wkOff),
-    ...(existing?.carriedFrom ? { carriedFrom: existing.carriedFrom } : {}),
-    created: new Date().toISOString(),
+    created: existing?.created ?? new Date().toISOString(),
     notes: existing?.notes ?? [],
   };
 

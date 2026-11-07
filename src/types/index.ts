@@ -49,8 +49,12 @@ export interface Task {
   wk: string;
   created: string;
   notes: TaskNote[];
-  /** Görev otomatik olarak sonraki haftaya devredildiyse ilk ait olduğu hafta. */
+  /** Bu görev başka bir haftadaki görevin kopyasıysa, kaynak görevin haftası. */
   carriedFrom?: string;
+  /** Kopyalandığı kaynak görevin id'si. */
+  sourceId?: string;
+  /** Bu görevin kopyası başka bir haftaya aktarıldıysa hedef hafta. */
+  carriedTo?: string;
 }
 
 export interface Report {

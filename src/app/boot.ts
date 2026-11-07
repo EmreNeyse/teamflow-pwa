@@ -11,7 +11,17 @@ import {
 } from '@/app/features/device-pairing';
 import { installPwaApp } from '@/lib/pwa/install';
 import { buildSetup, finishSetup, goLogin, goSetup, startNewAccount } from '@/app/features/setup';
-import { buildLogin, cancelForgotPin, logout, openForgotPin, saveForgotPin } from '@/app/features/login';
+import {
+  buildLogin,
+  cancelForgotPin,
+  logout,
+  openForgotPin,
+  saveForgotPin,
+  setAuthMode,
+  submitForgot,
+  submitLogin,
+  submitRegister,
+} from '@/app/features/login';
 import {
   bindShellEvents,
   enterApp,
@@ -24,6 +34,7 @@ import {
 import {
   addNote,
   chWeek,
+  openBoardWeekPicker,
   closeModal,
   deleteTask,
   editTask,
@@ -37,7 +48,7 @@ import {
 } from '@/app/features/tasks';
 import { archAssign, archToggle, archToggleAll, renderArchive } from '@/app/features/archive';
 import { aiTrig, bindChatSuggestEvents, closeChatSuggestions, sendMsg, toggleChatSuggestions } from '@/app/features/ai';
-import { buildReport, chReportWeek, downloadReport, renderReports, switchReportTab, toggleReportDownloadMenu, viewReport } from '@/app/features/reports';
+import { buildReport, chReportWeek, openReportWeekPicker, downloadReport, renderReports, switchReportTab, toggleReportDownloadMenu, viewReport } from '@/app/features/reports';
 import {
   disableCloudSync,
   enableCloudSync,
@@ -73,6 +84,10 @@ declare global {
     enterApp: typeof enterApp;
     logout: typeof logout;
     openForgotPin: typeof openForgotPin;
+    setAuthMode: typeof setAuthMode;
+    submitLogin: typeof submitLogin;
+    submitRegister: typeof submitRegister;
+    submitForgot: typeof submitForgot;
     cancelForgotPin: typeof cancelForgotPin;
     saveForgotPin: typeof saveForgotPin;
     switchTab: typeof switchTab;
@@ -81,6 +96,8 @@ declare global {
     toggleNotifMenu: typeof toggleNotificationMenu;
     markAllRead: typeof markAllRead;
     chWeek: typeof chWeek;
+    openBoardWeekPicker: typeof openBoardWeekPicker;
+    openReportWeekPicker: typeof openReportWeekPicker;
     renderArchive: typeof renderArchive;
     archToggle: typeof archToggle;
     archToggleAll: typeof archToggleAll;
@@ -155,8 +172,8 @@ export function boot(): void {
 function continueBoot(): void {
   const registry = getRegistry();
   if (!registry.users.length) {
-    buildSetup();
-    showScreen('setupScreen');
+    buildLogin(null, 'register');
+    showScreen('loginScreen');
     return;
   }
 
@@ -180,6 +197,10 @@ export function registerWindowApi(): void {
   window.enterApp = enterApp;
   window.logout = logout;
   window.openForgotPin = openForgotPin;
+  window.setAuthMode = setAuthMode;
+  window.submitLogin = submitLogin;
+  window.submitRegister = submitRegister;
+  window.submitForgot = submitForgot;
   window.cancelForgotPin = cancelForgotPin;
   window.saveForgotPin = saveForgotPin;
   window.switchTab = switchTab;
@@ -188,6 +209,8 @@ export function registerWindowApi(): void {
   window.toggleNotifMenu = toggleNotificationMenu;
   window.markAllRead = markAllRead;
   window.chWeek = chWeek;
+  window.openBoardWeekPicker = openBoardWeekPicker;
+  window.openReportWeekPicker = openReportWeekPicker;
   window.renderArchive = renderArchive;
   window.archToggle = archToggle;
   window.archToggleAll = archToggleAll;

@@ -119,7 +119,7 @@ export function goSetup(fromApp = false): void {
 }
 
 export function startNewAccount(): void {
-  goSetup(true);
+  void import('@/app/features/login').then(({ openRegister }) => openRegister());
 }
 
 export function goLogin(): void {

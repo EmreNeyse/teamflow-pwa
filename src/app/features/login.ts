@@ -1,9 +1,18 @@
 import { AVATARS } from '@/data/constants';
-import { deleteUser, getRegistry, loadUserData, updateUserProfile } from '@/lib/storage/user-storage';
+import {
+  createUser,
+  deleteUser,
+  findUserByLogin,
+  findUserForPinReset,
+  getRegistry,
+  loadUserData,
+  updateUserProfile,
+} from '@/lib/storage/user-storage';
+import { isCloudSyncAvailable } from '@/lib/sync/config';
 import { tasksForWeek, todayIso } from '@/lib/tasks/week';
 import { esc, showScreen } from '@/lib/utils';
-import type { Task, TaskStatus } from '@/types';
-import { openUserSession } from '@/app/state';
+import type { Task, TaskStatus, UserProfile } from '@/types';
+import { closeUserSession, openUserSession } from '@/app/state';
 import { toast } from '@/app/toast';
 import { enterApp } from '@/app/features/shell';
 import { renderCloudSyncLogin } from '@/app/features/cloud-sync';
@@ -22,88 +31,214 @@ const SHOWCASE_COLUMNS: { status: TaskStatus; dot: string; label: string }[] = [
   { status: 'done', dot: 'done', label: 'Tamamlandı' },
 ];
 
+export type AuthMode = 'login' | 'register' | 'forgot';
+
 let selectedUserId: string | null = null;
-let pinBuffer = '';
-let pinKeyboardBound = false;
+let registerAvatar = 0;
 let resetPinNew = '';
 let resetPinConfirm = '';
 let resetPinKeyboardBound = false;
 
-export function buildLogin(preferredUserId: string | null = null): void {
+function field(id: string): HTMLInputElement {
+  return document.getElementById(id) as HTMLInputElement;
+}
+
+function setError(id: string, message: string): void {
+  const element = document.getElementById(id);
+  if (element) element.textContent = message;
+}
+
+function shake(id: string): void {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.classList.remove('shake');
+  void element.offsetWidth;
+  element.classList.add('shake');
+  window.setTimeout(() => element.classList.remove('shake'), 400);
+}
+
+function onlyDigits(input: HTMLInputElement): void {
+  if (input.dataset.digitsBound) return;
+  input.dataset.digitsBound = '1';
+  input.addEventListener('input', () => {
+    const clean = input.value.replace(/\D/g, '').slice(0, 4);
+    if (clean !== input.value) input.value = clean;
+  });
+}
+
+export function buildLogin(preferredUserId: string | null = null, mode?: AuthMode): void {
   const registry = getRegistry();
   selectedUserId = preferredUserId && registry.users.some((user) => user.id === preferredUserId)
     ? preferredUserId
     : registry.users[0]?.id ?? null;
 
+  ['loginPin', 'regPin', 'regPin2'].forEach((id) => {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    if (input) onlyDigits(input);
+  });
+
   renderUserPicker(registry.users);
-  renderSelectedUser();
+  renderRegisterAvatars();
   renderLoginShowcase(selectedUserId);
   renderCloudSyncLogin();
   renderLoginInstallHint();
   renderLoginPairingHint();
-  resetPinInput();
-  bindPinKeyboard();
-  focusPinInput();
+  document.getElementById('forgotCloudNote')?.classList.toggle('hidden', !isCloudSyncAvailable());
+
+  prefillLogin();
+  setAuthMode(mode ?? (registry.users.length ? 'login' : 'register'));
 }
 
-function resetPinInput(): void {
-  pinBuffer = '';
-  syncPinUi();
-  const error = document.getElementById('pinErr');
-  if (error) error.textContent = '';
+function prefillLogin(): void {
+  const user = getRegistry().users.find((item) => item.id === selectedUserId);
+  const id = field('loginId');
+  const pin = field('loginPin');
+  if (id) id.value = user ? (user.email || user.name) : '';
+  if (pin) pin.value = '';
+  setError('loginErr', '');
 }
 
-function syncPinUi(): void {
-  const input = document.getElementById('pinInput') as HTMLInputElement | null;
-  if (input && input.value !== pinBuffer) input.value = pinBuffer;
-  for (let i = 0; i < 4; i += 1) {
-    document.getElementById(`pd${i}`)?.classList.toggle('filled', i < pinBuffer.length);
+export function setAuthMode(mode: AuthMode): void {
+  const card = document.getElementById('authCard');
+  if (card) card.dataset.mode = mode;
+
+  const panels: Record<AuthMode, string> = { login: 'authLogin', register: 'authRegister', forgot: 'authForgot' };
+  (Object.keys(panels) as AuthMode[]).forEach((key) => {
+    document.getElementById(panels[key])?.classList.toggle('hidden', key !== mode);
+  });
+
+  const tabMode = mode === 'register' ? 'register' : 'login';
+  const loginTab = document.getElementById('authTabLogin');
+  const registerTab = document.getElementById('authTabRegister');
+  loginTab?.classList.toggle('active', tabMode === 'login');
+  registerTab?.classList.toggle('active', tabMode === 'register');
+  loginTab?.setAttribute('aria-selected', String(tabMode === 'login'));
+  registerTab?.setAttribute('aria-selected', String(tabMode === 'register'));
+
+  ['loginErr', 'registerErr', 'forgotErr'].forEach((id) => setError(id, ''));
+
+  if (mode === 'forgot') {
+    const loginId = field('loginId')?.value.trim() ?? '';
+    if (loginId && !field('forgotId').value) field('forgotId').value = loginId;
   }
+
+  const focusId = mode === 'register'
+    ? 'regName'
+    : mode === 'forgot'
+      ? (field('forgotId')?.value ? 'forgotSurname' : 'forgotId')
+      : (field('loginId')?.value ? 'loginPin' : 'loginId');
+  window.setTimeout(() => field(focusId)?.focus(), 60);
 }
 
-function focusPinInput(): void {
-  window.setTimeout(() => {
-    (document.getElementById('pinInput') as HTMLInputElement | null)?.focus();
-  }, 60);
+export function submitLogin(): void {
+  const identifier = field('loginId').value.trim();
+  const pin = field('loginPin').value.trim();
+
+  if (!identifier) {
+    setError('loginErr', 'Adını veya e-postanı gir');
+    field('loginId').focus();
+    return;
+  }
+  if (!/^\d{4}$/.test(pin)) {
+    setError('loginErr', '4 haneli PIN gir');
+    shake('loginPin');
+    field('loginPin').focus();
+    return;
+  }
+
+  const userId = findUserByLogin(identifier, pin);
+  if (!userId) {
+    setError('loginErr', 'Ad/e-posta veya PIN hatalı');
+    field('loginPin').value = '';
+    shake('loginPin');
+    field('loginPin').focus();
+    return;
+  }
+
+  selectedUserId = userId;
+  openUserSession(userId);
+  enterApp();
 }
 
-function bindPinKeyboard(): void {
-  if (pinKeyboardBound) return;
-  pinKeyboardBound = true;
-
-  const input = document.getElementById('pinInput') as HTMLInputElement | null;
-  if (!input) return;
-
-  input.addEventListener('input', () => {
-    pinBuffer = input.value.replace(/\D/g, '').slice(0, 4);
-    syncPinUi();
-    if (pinBuffer.length === 4) window.setTimeout(checkPin, 80);
+function renderRegisterAvatars(): void {
+  const grid = document.getElementById('regAvatars');
+  if (!grid) return;
+  grid.innerHTML = AVATARS.map((avatar, index) => (
+    `<button type="button" class="auth-av${index === registerAvatar ? ' sel' : ''}" data-av="${index}" aria-label="Avatar ${index + 1}" aria-pressed="${index === registerAvatar}">${avatar}</button>`
+  )).join('');
+  grid.querySelectorAll<HTMLButtonElement>('.auth-av').forEach((button) => {
+    button.addEventListener('click', () => {
+      registerAvatar = Number(button.dataset.av);
+      grid.querySelectorAll<HTMLButtonElement>('.auth-av').forEach((item) => {
+        const active = Number(item.dataset.av) === registerAvatar;
+        item.classList.toggle('sel', active);
+        item.setAttribute('aria-pressed', String(active));
+      });
+    });
   });
+}
 
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && pinBuffer.length === 4) {
-      event.preventDefault();
-      checkPin();
-    }
-  });
+export function submitRegister(): void {
+  const name = field('regName').value.trim();
+  const surname = field('regSurname').value.trim();
+  const email = field('regEmail').value.trim().toLowerCase();
+  const pin = field('regPin').value.trim();
+  const pin2 = field('regPin2').value.trim();
 
-  document.querySelector('.pin-entry')?.addEventListener('click', focusPinInput);
+  const fail = (message: string, focusId: string) => {
+    setError('registerErr', message);
+    shake(focusId);
+    field(focusId).focus();
+  };
+
+  if (!name) return fail('Ad gerekli', 'regName');
+  if (!surname) return fail('Soyad gerekli (PIN sıfırlamada doğrulama için kullanılır)', 'regSurname');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Geçerli bir e-posta gir', 'regEmail');
+  if (!/^\d{4}$/.test(pin)) return fail('PIN 4 haneli sayı olmalı', 'regPin');
+  if (pin !== pin2) return fail('PIN\'ler eşleşmiyor', 'regPin2');
+
+  const exists = getRegistry().users.some((user) => (user.email ?? '').toLowerCase() === email);
+  if (exists) return fail('Bu e-posta ile kayıtlı bir hesap var. Giriş yap sekmesini kullan.', 'regEmail');
+
+  const created = createUser({ name, surname, email, pin, avatarIdx: registerAvatar } as Omit<UserProfile, 'id'>);
+  ['regName', 'regSurname', 'regEmail', 'regPin', 'regPin2'].forEach((id) => { field(id).value = ''; });
+  selectedUserId = created.profile.id;
+  openUserSession(created.profile.id);
+  enterApp();
+  toast(`Hoş geldin ${name}! Hesabın oluşturuldu ✓`, 'ok');
+}
+
+export function submitForgot(): void {
+  const identifier = field('forgotId').value.trim();
+  const surname = field('forgotSurname').value.trim();
+  if (!identifier) {
+    setError('forgotErr', 'Adını veya e-postanı gir');
+    field('forgotId').focus();
+    return;
+  }
+
+  const userId = findUserForPinReset(identifier, surname);
+  if (!userId) {
+    setError('forgotErr', 'Bu bilgilerle eşleşen hesap bulunamadı');
+    shake('forgotSurname');
+    return;
+  }
+
+  selectedUserId = userId;
+  field('forgotSurname').value = '';
+  openForgotPin();
 }
 
 function renderUserPicker(users: ReturnType<typeof getRegistry>['users']): void {
   const picker = document.getElementById('userPicker');
+  document.getElementById('authAccounts')?.classList.toggle('hidden', !users.length);
   if (!picker) return;
 
-  if (!users.length) {
-    picker.innerHTML = '<div class="user-picker-empty">Henüz hesap yok. Yeni hesap oluştur.</div>';
-    return;
-  }
-
   picker.innerHTML = users.map((user) => `
-    <button class="user-chip${user.id === selectedUserId ? ' active' : ''}" data-user-id="${user.id}">
+    <button type="button" class="user-chip${user.id === selectedUserId ? ' active' : ''}" data-user-id="${user.id}" title="${esc(user.email || user.name)}">
       <span class="user-chip-av">${AVATARS[user.avatarIdx] ?? AVATARS[0]}</span>
       <span class="user-chip-name">${esc(user.name)}</span>
-      <span class="user-chip-close" data-remove-id="${user.id}" title="Hesabı sil">
+      <span class="user-chip-close" data-remove-id="${user.id}" title="Hesabı bu cihazdan sil">
         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
       </span>
     </button>
@@ -123,10 +258,9 @@ function renderUserPicker(users: ReturnType<typeof getRegistry>['users']): void 
       picker.querySelectorAll('.user-chip').forEach((chip) => {
         chip.classList.toggle('active', chip.getAttribute('data-user-id') === selectedUserId);
       });
-      renderSelectedUser();
       renderLoginShowcase(selectedUserId);
-      resetPinInput();
-      focusPinInput();
+      prefillLogin();
+      field('loginPin').focus();
     });
   });
 }
@@ -135,34 +269,14 @@ function removeAccount(userId: string): void {
   const registry = getRegistry();
   const user = registry.users.find((item) => item.id === userId);
   if (!user) return;
-  if (!confirm(`"${user.name}" hesabını silmek istediğine emin misin?`)) return;
+  if (!confirm(`"${user.name}" hesabını bu cihazdan silmek istediğine emin misin?`)) return;
 
   deleteUser(userId);
   const updated = getRegistry();
   toast('Hesap silindi');
 
-  if (!updated.users.length) {
-    void import('@/app/features/setup').then(({ goSetup }) => goSetup());
-    return;
-  }
-
-  const nextId = selectedUserId === userId ? (updated.lastUserId ?? updated.users[0].id) : selectedUserId;
+  const nextId = selectedUserId === userId ? (updated.lastUserId ?? updated.users[0]?.id ?? null) : selectedUserId;
   buildLogin(nextId);
-}
-
-function renderSelectedUser(): void {
-  const registry = getRegistry();
-  const user = registry.users.find((item) => item.id === selectedUserId);
-  const card = document.getElementById('loginCard');
-  if (!user || !card) {
-    card?.classList.add('hidden');
-    return;
-  }
-
-  card.classList.remove('hidden');
-  (document.getElementById('loginAv') as HTMLElement).textContent = AVATARS[user.avatarIdx] ?? AVATARS[0];
-  (document.getElementById('loginName') as HTMLElement).textContent = `${user.name} ${user.surname || ''}`.trim();
-  (document.getElementById('loginEmail') as HTMLElement).textContent = user.email || '';
 }
 
 function buildShowcaseCard(task: Task): string {
@@ -252,48 +366,21 @@ function renderLoginShowcase(userId: string | null): void {
   `;
 }
 
-function checkPin(): void {
-  if (!selectedUserId) {
-    toast('Önce bir hesap seç', 'err');
-    return;
-  }
-
-  const data = loadUserData(selectedUserId);
-  if (!data) {
-    toast('Hesap verisi bulunamadı', 'err');
-    return;
-  }
-
-  if (pinBuffer === data.profile.pin) {
-    openUserSession(selectedUserId);
-    enterApp();
-    return;
-  }
-
-  pinBuffer = '';
-  syncPinUi();
-  const error = document.getElementById('pinErr');
-  if (error) error.textContent = 'Yanlış PIN, tekrar dene';
-
-  const pinEntry = document.getElementById('pinEntry');
-  if (pinEntry) {
-    pinEntry.classList.add('shake');
-    window.setTimeout(() => {
-      pinEntry.classList.remove('shake');
-      focusPinInput();
-    }, 400);
-  }
+export function logout(): void {
+  buildLogin(selectedUserId, 'login');
+  showScreen('loginScreen');
 }
 
-export function logout(): void {
-  resetPinInput();
-  buildLogin(selectedUserId);
+/** Yeni hesap: oturumu kapatıp giriş ekranını kayıt modunda açar. */
+export function openRegister(): void {
+  closeUserSession();
+  buildLogin(null, 'register');
   showScreen('loginScreen');
 }
 
 export function openForgotPin(): void {
   if (!selectedUserId) {
-    toast('Önce bir hesap seç', 'err');
+    setAuthMode('forgot');
     return;
   }
 
@@ -318,7 +405,7 @@ export function openForgotPin(): void {
 export function cancelForgotPin(): void {
   resetForgotPinForm();
   showScreen('loginScreen');
-  focusPinInput();
+  setAuthMode('login');
 }
 
 export function saveForgotPin(): void {
@@ -357,11 +444,10 @@ export function saveForgotPin(): void {
   const { id: _id, ...profileRest } = data.profile;
   updateUserProfile(selectedUserId, { ...profileRest, pin: resetPinNew });
 
-  toast('PIN güncellendi ✓', 'ok');
+  toast('PIN güncellendi ✓ Yeni PIN ile giriş yapabilirsin', 'ok');
   resetForgotPinForm();
-  resetPinInput();
+  buildLogin(selectedUserId, 'login');
   showScreen('loginScreen');
-  focusPinInput();
 }
 
 function resetForgotPinForm(): void {

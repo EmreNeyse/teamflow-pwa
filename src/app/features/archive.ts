@@ -3,6 +3,7 @@ import { esc } from '@/lib/utils';
 import { offsetForWeek, weekKey, weekLabel, weekRangeLabel } from '@/lib/tasks/week';
 import { getState, patchState } from '@/app/state';
 import { toast } from '@/app/toast';
+import { copyTaskToWeek } from '@/lib/tasks/rollover';
 
 const selected = new Set<string>();
 
@@ -92,12 +93,12 @@ export function renderArchive(): void {
   if (sub) {
     const weekCount = new Set(all.map((task) => task.wk)).size;
     sub.textContent = all.length
-      ? `${weekCount} geçmiş haftada ${all.length} görev · seçtiğin görevleri istediğin haftaya ata`
+      ? `${weekCount} geçmiş haftada ${all.length} görev · seçtiğin görevleri istediğin haftaya görev olarak ekle (orijinali kendi haftasında kalır)`
       : 'Geçmiş haftalara ait görev yok';
   }
 
   if (!tasks.length) {
-    root.innerHTML = `<tr><td colspan="7"><div class="empty-col"><div class="ec-icon">🗂</div><div class="ec-txt">${all.length ? 'Filtreye uyan görev yok' : 'Geçmiş haftalara ait görev yok'}</div></div></td></tr>`;
+    root.innerHTML = `<tr><td colspan="8"><div class="empty-col"><div class="ec-icon">🗂</div><div class="ec-txt">${all.length ? 'Filtreye uyan görev yok' : 'Geçmiş haftalara ait görev yok'}</div></div></td></tr>`;
   } else {
     root.innerHTML = tasks.map(buildRow).join('');
   }
@@ -119,13 +120,14 @@ function buildRow(task: Task): string {
       <td class="arch-chk"><input type="checkbox" ${checked ? 'checked' : ''} aria-label="Seç" onclick="event.stopPropagation();archToggle('${task.id}')"></td>
       <td class="arch-title">
         <button type="button" class="arch-link" onclick="event.stopPropagation();openDetail('${task.id}')">${esc(task.title)}</button>
-        ${task.carriedFrom ? `<div class="arch-note">↪ ${esc(weekRangeLabel(task.carriedFrom))} haftasından devredildi</div>` : ''}
+        ${task.carriedFrom ? `<div class="arch-note">↩ ${esc(weekRangeLabel(task.carriedFrom))} haftasından aktarıldı</div>` : ''}
       </td>
       <td class="arch-nowrap">${esc(weekRangeLabel(task.wk))}</td>
       <td><span class="ptag ${priority.cls}">${priority.label}</span></td>
       <td><span class="arch-status ${status.cls}">${status.label}</span></td>
       <td class="arch-hide-sm">${task.tag ? esc(task.tag) : '—'}</td>
       <td class="arch-nowrap arch-hide-sm">${task.due || '—'}</td>
+      <td class="arch-nowrap">${task.carriedTo ? `<span class="arch-carried">➜ ${esc(weekRangeLabel(task.carriedTo))}</span>` : '—'}</td>
     </tr>
   `;
 }
@@ -163,18 +165,23 @@ export function archAssign(): void {
   const targetStatus = (inputValue('archTargetStatus') || 'todo') as TaskStatus;
   const ids = new Set(selected);
 
-  patchState((state) => ({
-    ...state,
-    tasks: state.tasks.map((task) => (ids.has(task.id)
-      ? { ...task, wk: targetWeek, status: targetStatus }
-      : task)),
-  }));
+  patchState((state) => {
+    const copies: Task[] = [];
+    const tasks = state.tasks.map((task) => {
+      if (!ids.has(task.id)) return task;
+      copies.push(copyTaskToWeek(task, targetWeek, targetStatus));
+      return { ...task, carriedTo: targetWeek };
+    });
+    return { ...state, tasks: [...tasks, ...copies] };
+  });
+
 
   selected.clear();
   renderArchive();
   void import('@/app/features/tasks').then(({ renderTasks }) => renderTasks());
 
   const offset = offsetForWeek(targetWeek);
-  const weekText = offset >= -1 && offset <= 1 ? weekLabel(offset) : weekRangeLabel(targetWeek);
-  toast(`${ids.size} görev → ${weekText} · ${STATUS_META[targetStatus].label} ✓`, 'ok');
+  const named: Record<string, string> = { '-1': 'geçen haftaya', '0': 'bu haftaya', '1': 'gelecek haftaya' };
+  const weekText = named[String(offset)] ?? `${weekRangeLabel(targetWeek)} haftasına`;
+  toast(`${ids.size} görev ${weekText} eklendi (${STATUS_META[targetStatus].label}) ✓`, 'ok');
 }

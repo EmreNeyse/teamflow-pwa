@@ -1,7 +1,7 @@
 import { reportsChanged, tasksChanged } from '@/data/sample-tasks';
 import { syncDemoTasksForUser } from '@/lib/tasks/demo-sync';
 import { esc } from '@/lib/utils';
-import { tasksForWeek, todayIso, weekKey, weekLabel, normalizeWeekOffset } from '@/lib/tasks/week';
+import { tasksForWeek, todayIso, weekKey, weekLabel, normalizeWeekOffset, offsetForWeek } from '@/lib/tasks/week';
 import { uid } from '@/lib/utils';
 import { getState, patchState } from '@/app/state';
 import { toast } from '@/app/toast';
@@ -393,7 +393,7 @@ function renderReportTabs(activeTab: 'current' | 'history', reportCount: number,
       <button type="button" class="fpill${activeTab === 'history' ? ' active' : ''}" role="tab" data-tab="history" aria-selected="${activeTab === 'history'}" onclick="switchReportTab('history')">Tüm Raporlar${reportCount ? `<span class="rpt-tab-count">${reportCount}</span>` : ''}</button>
       <div class="week-nav">
         <button class="warr" type="button" onclick="chReportWeek(-1)" aria-label="Önceki hafta">‹</button>
-        <span class="week-lbl" id="rptWeekLbl">${weekLabel(wkOff)}</span>
+        <button type="button" class="week-lbl week-lbl-btn" id="rptWeekLbl" aria-haspopup="dialog" aria-expanded="false" title="Takvimden hafta seç" onclick="openReportWeekPicker(this)">${weekLabel(wkOff)}</button>
         <button class="warr" type="button" onclick="chReportWeek(1)" aria-label="Sonraki hafta">›</button>
       </div>
     </div>`;
@@ -635,4 +635,14 @@ export function renderReports(): void {
   });
   bindWeeklyTrendChart();
   bindReportDownloadMenu();
+}
+
+export function openReportWeekPicker(anchor: HTMLElement): void {
+  const wkOff = normalizeWeekOffset(getState().wkOff);
+  void import('@/app/features/week-picker').then(({ openWeekPicker }) => {
+    openWeekPicker(anchor, weekKey(wkOff), (week) => {
+      const delta = offsetForWeek(week) - normalizeWeekOffset(getState().wkOff);
+      if (delta) chReportWeek(delta);
+    });
+  });
 }

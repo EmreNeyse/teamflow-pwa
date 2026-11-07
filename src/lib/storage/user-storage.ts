@@ -153,6 +153,37 @@ export function findUserByNameAndPin(name: string, pin: string): string | null {
   return null;
 }
 
+function matchesIdentifier(profile: UserProfile, identifier: string): boolean {
+  const id = identifier.trim().toLocaleLowerCase('tr-TR');
+  if (!id) return false;
+  const name = profile.name.trim().toLocaleLowerCase('tr-TR');
+  const full = `${profile.name} ${profile.surname ?? ''}`.trim().toLocaleLowerCase('tr-TR');
+  const email = (profile.email ?? '').trim().toLocaleLowerCase('tr-TR');
+  return id === name || id === full || (!!email && id === email);
+}
+
+/** Ad, "ad soyad" veya e-posta + PIN ile hesabı bulur. */
+export function findUserByLogin(identifier: string, pin: string): string | null {
+  if (!/^\d{4}$/.test(pin)) return null;
+  for (const summary of getRegistry().users) {
+    const data = loadUserData(summary.id);
+    if (data && matchesIdentifier(data.profile, identifier) && data.profile.pin === pin) return summary.id;
+  }
+  return null;
+}
+
+/** PIN sıfırlama doğrulaması: ad/e-posta + soyad eşleşmeli (soyadı kayıtlı olmayan eski hesaplarda yalnızca ad/e-posta). */
+export function findUserForPinReset(identifier: string, surname: string): string | null {
+  const wanted = surname.trim().toLocaleLowerCase('tr-TR');
+  for (const summary of getRegistry().users) {
+    const data = loadUserData(summary.id);
+    if (!data || !matchesIdentifier(data.profile, identifier)) continue;
+    const stored = (data.profile.surname ?? '').trim().toLocaleLowerCase('tr-TR');
+    if (stored ? stored === wanted : true) return summary.id;
+  }
+  return null;
+}
+
 export function createUser(profileInput: Omit<UserProfile, 'id'>): UserData {
   const profile: UserProfile = { ...profileInput, id: uid('u') };
   const data = emptyUserData(profile);
