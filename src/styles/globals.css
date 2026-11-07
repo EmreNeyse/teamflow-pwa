@@ -2997,3 +2997,43 @@ body.dark .wp-month small{color:#fdba74}
   .auth-avatars{grid-template-columns:repeat(6,1fr);gap:4px}
   .auth-av{font-size:17px;border-radius:10px}
 }
+
+/* SOLA SÜRÜKLE → SİL */
+.trash-zone{
+  position:fixed;left:0;top:0;bottom:0;z-index:150;width:clamp(96px,11vw,150px);
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(90deg,rgba(239,68,68,.92) 0%,rgba(239,68,68,.55) 55%,rgba(239,68,68,0) 100%);
+  color:#fff;pointer-events:none;opacity:0;transform:translateX(-100%);
+  transition:transform .32s cubic-bezier(.34,1.3,.64,1),opacity .2s ease,width .25s ease;
+}
+.trash-zone.visible{opacity:1;transform:translateX(0);pointer-events:auto}
+.trash-zone.armed{width:clamp(130px,15vw,190px);background:linear-gradient(90deg,rgba(220,38,38,1) 0%,rgba(239,68,68,.75) 60%,rgba(239,68,68,0) 100%)}
+.trash-zone-inner{display:flex;flex-direction:column;align-items:center;gap:8px;margin-right:22%;text-align:center}
+.trash-zone-icon{filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));transition:transform .2s ease}
+.trash-zone.armed .trash-zone-icon{animation:trashWiggle .5s ease infinite;transform:scale(1.2)}
+.trash-zone-text{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;max-width:90px;line-height:1.3}
+@keyframes trashWiggle{0%,100%{transform:scale(1.2) rotate(0)}25%{transform:scale(1.2) rotate(-12deg)}75%{transform:scale(1.2) rotate(12deg)}}
+
+#col-todo .task-card{touch-action:pan-y}
+.task-card.swiping{
+  transform:translateX(var(--swipe-x,0)) rotate(calc(var(--swipe-p,0) * -3deg));
+  transition:none;cursor:grabbing;
+  border-color:rgba(239,68,68,calc(.25 + var(--swipe-p,0) * .6));
+  background:rgba(239,68,68,calc(var(--swipe-p,0) * .2));
+}
+.task-card.swipe-return{transition:transform .26s cubic-bezier(.34,1.56,.64,1),background .26s ease,border-color .26s ease}
+.task-card.removing{overflow:hidden}
+
+.toast.has-action{pointer-events:auto;display:flex;align-items:center;gap:14px}
+.toast-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast-action{
+  flex-shrink:0;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;
+  font-family:inherit;font-size:12px;font-weight:800;padding:6px 12px;border-radius:10px;cursor:pointer;
+}
+.toast-action:hover{background:rgba(255,255,255,.26)}
+.toast-action:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  .trash-zone{transition:opacity .15s ease}
+  .trash-zone.armed .trash-zone-icon{animation:none}
+}

@@ -41,6 +41,9 @@ import {
   onDragLeave,
   onDragOver,
   onDrop,
+  onTrashDragLeave,
+  onTrashDragOver,
+  onTrashDrop,
   openDetail,
   openNewTask,
   saveTask,
@@ -112,6 +115,9 @@ declare global {
     onDragOver: typeof onDragOver;
     onDragLeave: typeof onDragLeave;
     onDrop: typeof onDrop;
+    onTrashDragOver: typeof onTrashDragOver;
+    onTrashDragLeave: typeof onTrashDragLeave;
+    onTrashDrop: typeof onTrashDrop;
     aiTrig: typeof aiTrig;
     toggleChatSuggestions: typeof toggleChatSuggestions;
     closeChatSuggestions: typeof closeChatSuggestions;
@@ -225,6 +231,9 @@ export function registerWindowApi(): void {
   window.onDragOver = onDragOver;
   window.onDragLeave = onDragLeave;
   window.onDrop = onDrop;
+  window.onTrashDragOver = onTrashDragOver;
+  window.onTrashDragLeave = onTrashDragLeave;
+  window.onTrashDrop = onTrashDrop;
   window.aiTrig = aiTrig;
   window.toggleChatSuggestions = toggleChatSuggestions;
   window.closeChatSuggestions = closeChatSuggestions;
